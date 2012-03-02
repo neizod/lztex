@@ -14,7 +14,7 @@ LzTeX propose to be a combination of:
 
 It can be render as standard LaTeX file, or for web technology (HTML, MathML).
 
-If you are interest and want to participate in this project, you can suggest your idea at wiki pages.
+If you are interest and want to participate in this project, you can suggest your idea at [wiki](https://github.com/neizod/LzTeX/wiki) pages.
 
 The Zen of LzTeX
 ----------------
@@ -22,5 +22,4 @@ The Zen of LzTeX
     Laziness is not always the bad thing.
     Thus, minimalism is prefer.
     But not too minimal to easily confuse.
-    Readability counts.
     And Beautiful comes from inside.
