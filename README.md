@@ -14,7 +14,7 @@ LzTeX propose to be a combination of:
 
 It can be render as standard LaTeX file, or for web technology (HTML, MathML).
 
-If you are interest and want to participate in this project, you can suggest your idea at [wiki](https://github.com/neizod/LzTeX/wiki) pages.
+If you are interest and want to participate in this project, you can raise an [enhancement issue](https://github.com/neizod/LzTeX/Issues).
 
 The Zen of LzTeX
 ----------------
