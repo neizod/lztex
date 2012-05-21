@@ -27,6 +27,9 @@ class LzTeX:
         #   - sub **text**  to  <b>text</b>
         #   - sub _text_  to  <u>text</u>
         #
+        #   - sub markdown bullet  to  \begin{itemize} \item text \end{itemize}
+        #   - sub markdown numlet  to  \begin{enumerate} \item text \end{...}
+        #
         #   - sub [name](link)  to  name
         #   - sub [^num] ... [num] text  to  \footnote{text}
         #   - sub 
