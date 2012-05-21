@@ -41,7 +41,7 @@ class LzTeX:
     def wrapper(self, text):
         # TODO considered profile usage.
 
-        head = r'\documentclass{article}'
+        head = r'\documentclass{{{}}}'.format('article')
         begin = r'\begin{document}'
         end = r'\end{document}'
         return '\n'.join([head, begin, text, end])
