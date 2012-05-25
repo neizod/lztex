@@ -16,6 +16,15 @@ class LzTeX:
                 - unstrict, for backward comp e.g. int, integral, Integral'''
         self.profile = profile
         self.ezmath = ezmath
+        self.schema = self.schema_maker()
+
+    def schema_maker(self):
+        schema = {}
+        if self.profile == 'standard':
+            schema['document'] = 'article'
+        else:
+            schema['document'] = 'report'
+        return schema
 
     def parse(self, text):
         # TODO considered profile usage.
@@ -51,7 +60,7 @@ class LzTeX:
     def wrapper(self, text):
         # TODO considered profile usage.
 
-        head = r'\documentclass{{{}}}'.format('article')
+        head = r'\documentclass{{{}}}'.format(self.schema['document'])
         begin = r'\begin{document}'
         end = r'\end{document}'
         return '\n'.join([head, begin, text, end])
