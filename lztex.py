@@ -72,10 +72,13 @@ class EzMath:
         self.profile = profile
 
     def parse(self, text):
-        # call external EzMath lex/yacc prog.
+        # FIXME call external EzMath lex/yacc prog.
         text = sp.Popen(['./ezmath', text], stdout=sp.PIPE).stdout.read().decode()
 
-        return text
+        # FIXME handle \begin{align} ... \end{align} error of external EzMath.
+        text = re.sub(r'^\\begin{align}\n|\n\\end{align}\n$', '', text)
+
+        return text.join('$$')
 
 def main():
     # TODO init profile for parser.
