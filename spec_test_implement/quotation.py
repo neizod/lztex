@@ -7,7 +7,13 @@ def corrected_quoatation(q):
 
 import re
 
-raw = input()
+lines = []
+while 1:
+    lines.append(input())
+    if lines[-1] == '':
+        break
+
+raw = '\n'.join(lines)
 
 out = re.sub(r'(^|\s)("|\')', corrected_quoatation, raw)
 
