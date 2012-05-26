@@ -78,6 +78,13 @@ class EzMath:
         # FIXME handle \begin{align} ... \end{align} error of external EzMath.
         text = re.sub(r'^\\begin{align}\n|\n\\end{align}\n$', '', text)
 
+        text = self.wrapper(text)
+        return text
+
+    def wrapper(self, text):
+        # TODO chk math sentence's type
+        # return  $ \math{} $  if type = inline else  $$ \math{} $$
+
         return text.join('$$')
 
 def main():
