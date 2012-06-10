@@ -1,2 +1,7 @@
-﻿# vim swap
-*~
+﻿# vim
+.*.sw[a-z]
+*.un~
+Session.vim
+
+# python
+*.py[cod]
