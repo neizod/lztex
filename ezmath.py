@@ -22,6 +22,41 @@ staticsymbol = {'+':    r'+',
 
                 '||':    r'\|',
                 '|':     r'|',
+
+                # ================================
+
+                '=':      r'=',
+                '==':     r'\equiv',
+                '~=':     r'\cong',
+                '~~':     r'\approx',
+                'propto': r'\propto',
+                '!=':     r'\neq',
+                '<':      r'\lt',
+                '>':      r'\gt',
+                '<<':     r'\ll',
+                '>>':     r'\gg',
+                '<=':     r'\leq',    # '=<' like haskell due to arrow conflict
+                '>=':     r'\geq',
+                '-<':     r'\prec',
+                '>-':     r'\succ',
+
+                'and':    r'\land',
+                'or':     r'\lor',
+                'not':    r'\neg',
+                '<->':    r'\leftrightarrow',
+                '<-->':   r'\longleftrightarrow',
+                '->':     r'\rightarrow',
+                '-->':    r'\longrightarrow',
+                '<-':     r'\leftarrow',
+                '<--':    r'\longleftarrow',
+                '<=>':    r'\Leftrightarrow',
+                '<==>':   r'\Longleftrightarrow',
+                '=>':     r'\Rightarrow',
+                '==>':    r'\Longrightarrow',
+                #'<=':     r'\Leftarrow',       # see above
+                '<==':    r'\Longleftarrow',
+                '|->':    r'\mapsto', 
+
                 }
 
 tokens = (

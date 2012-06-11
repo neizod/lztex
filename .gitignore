@@ -5,3 +5,7 @@ Session.vim
 
 # python
 *.py[cod]
+
+# ply
+parser.out
+parsetab.py
