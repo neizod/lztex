@@ -85,8 +85,13 @@ lex.lex()
 ##############################################################################
 
 def p_statement_expr(t):
-    'statement : expression'
-    print(t[1])
+    '''statement : statement expression
+                 | expression'''
+    try:
+        t[0] = t[1] + t[2]
+    except:
+        t[0] = t[1]
+    print(t[0])
 
 def p_expr_staticsymbol(t):
     'expression : STATICSYMBOL'
