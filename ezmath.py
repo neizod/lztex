@@ -57,16 +57,72 @@ staticsymbol = {'+':    r'+',
                 '<==':    r'\Longleftarrow',
                 '|->':    r'\mapsto', 
 
+                '...':    r'\ldots',
+                'infinity':   r'\infty',
+
+                'der':    r'\partial',
+                'nable':  r'\nabla',
+
+                'for all':    r'\forall',
+                'exists':     r'\exists',
+                'in':         r'\in',
+                'not in':     r'\notin',
+                'subset':     r'\subseteq',
+                'superset':   r'\supseteq',
+
+                'union':      r'\cup',
+                'intersect':  r'\cap',
+
+                'empty':      r'\emptyset',
+                'Eset':       r'\varnothing',
+                'Nset':       r'\mathbb{N}',
+                'Zset':       r'\mathbb{Z}',
+                'Pset':       r'\mathbb{P}',
+                'Qset':       r'\mathbb{Q}',
+                'Rset':       r'\mathbb{R}',
+                'Cset':       r'\mathbb{C}',
+                'Hset':       r'\mathbb{H}',
+                'Aleph':      r'\aleph',
+                'Re':         r'\Re',
+                'Im':         r'\Im',
+
+                # TODO function names
+
                 }
+greeksymbol = ( 'alpha',
+                'beta',
+                'gamma',   'Gamma',
+                'delta',   'Delta',
+                'epsilon', #var
+                'zeta',
+                'eta',
+                'theta', # upper, var
+                'iota',
+                'kappa',
+                'lambda',
+                'mu',
+                'nu',
+                'xi',
+                'omicron',
+                'pi',
+                'rho',
+                'sigma',
+                )
 
 tokens = (
         'STATICSYMBOL',
+        'GREEKSYMBOL',
 )
 
 def t_STATICSYMBOL(t):
     t.value = staticsymbol[t.value]
     return t
 t_STATICSYMBOL.__doc__ = r'|'.join(re.escape(w) for w in sorted(staticsymbol.keys(), key=lambda x: -len(x)))
+
+def t_GREEKSYMBOL(t):
+    t.value = '\\' + t.value
+    return t
+t_GREEKSYMBOL.__doc__ = r'|'.join(re.escape(w) for w in sorted(greeksymbol, key=lambda x: -len(x)))
 
 t_ignore = ' \t'
 
@@ -91,10 +147,14 @@ def p_statement_expr(t):
         t[0] = t[1] + t[2]
     except:
         t[0] = t[1]
-    print(t[0])
+
+    # simple debug.
+    print('... {0}'.format(t[0]))
+    # FIXME remove 0 inside {} due to make compatible w/ python27 and py3k only.
 
 def p_expr_staticsymbol(t):
-    'expression : STATICSYMBOL'
+    '''expression : STATICSYMBOL
+                  | GREEKSYMBOL'''
     t[0] = t[1]
 
 def p_error(t):
