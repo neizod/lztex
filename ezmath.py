@@ -89,29 +89,36 @@ staticsymbol = {'+':    r'+',
                 # TODO function names
 
                 }
-greeksymbol = ( 'alpha',
-                'beta',
-                'gamma',   'Gamma',
-                'delta',   'Delta',
-                'epsilon', #var
-                'zeta',
-                'eta',
-                'theta', # upper, var
-                'iota',
-                'kappa',
-                'lambda',
-                'mu',
-                'nu',
-                'xi',
-                'omicron',
-                'pi',
-                'rho',
-                'sigma',
+greeksymbol = ( r'alpha',
+                r'beta',
+                r'(G|g)amma',
+                r'(D|d)elta',
+                r'(var)?epsilon',
+                r'zeta',
+                r'eta',
+                r'(T|(var)?t)heta',
+                r'iota',
+                r'kappa',
+                r'(L|l)ambda',
+                r'mu',
+                r'nu',
+                r'(X|x)i',
+                r'omicron',
+                r'(P|(var)?p)i',
+                r'(var)?rho',
+                r'(S|(var)?s)igma',
+                r'tau',
+                r'(U|u)psilon',
+                r'(P|(var)?p)hi',
+                r'chi',
+                r'(P|p)si',
+                r'(O|o)mega',
                 )
 
 tokens = (
         'STATICSYMBOL',
         'GREEKSYMBOL',
+        'ENGLISHSYMBOL',
 )
 
 def t_STATICSYMBOL(t):
@@ -122,7 +129,13 @@ t_STATICSYMBOL.__doc__ = r'|'.join(re.escape(w) for w in sorted(staticsymbol.key
 def t_GREEKSYMBOL(t):
     t.value = '\\' + t.value
     return t
-t_GREEKSYMBOL.__doc__ = r'|'.join(re.escape(w) for w in sorted(greeksymbol, key=lambda x: -len(x)))
+t_GREEKSYMBOL.__doc__ = r'|'.join(w for w in sorted(greeksymbol, key=lambda x: -len(x)))
+
+def t_ENGLISHSYMBOL(t):
+    '[a-zA-Z]'
+    # TODO check if before this token end with english word?
+    t.value = ' ' + t.value
+    return t
 
 t_ignore = ' \t'
 
@@ -154,7 +167,8 @@ def p_statement_expr(t):
 
 def p_expr_staticsymbol(t):
     '''expression : STATICSYMBOL
-                  | GREEKSYMBOL'''
+                  | GREEKSYMBOL
+                  | ENGLISHSYMBOL'''
     t[0] = t[1]
 
 def p_error(t):
