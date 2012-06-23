@@ -1,4 +1,6 @@
-import re
+from ply.lex import TOKEN
+from re import escape
+
 staticsymbol = {'+':    r'+', 
                 '-':    r'-',
                 '*':    r'\times',
@@ -119,28 +121,79 @@ tokens = (
         'STATICSYMBOL',
         'GREEKSYMBOL',
         'ENGLISHSYMBOL',
+
+        'OP',
+        'CP',
+        'OB_M',
+        'OB',
+        'CB',
+
+        'POW',
 )
 
+states = (
+        ('matrix', 'inclusive'),
+)
+
+sort_len = lambda x: -len(x)
+
+
+###############################################################################
+
+def t_OP(t):
+    r'\('
+    t.lexer.begin('matrix')
+    return t
+
+def t_CP(t):
+    r'\)'
+    t.lexer.begin('INITIAL')
+    return t
+
+def t_OB(t):
+    r'\['
+    t.lexer.begin('matrix')
+    return t
+
+def t_matrix_OB_M(t):
+    r'\['
+    t.lexer.begin('matrix')
+    return t
+
+def t_CB(t):
+    r'\]'
+    t.lexer.begin('INITIAL')
+    return t
+
+def t_POW(t):
+    r'\^'
+    t.lexer.begin('matrix')
+    return t
+
+@TOKEN(r'[ \t]')
+def t_WHITESPACE(t):
+    t.lexer.begin('matrix')
+
+@TOKEN(r'|'.join(escape(w) for w in sorted(staticsymbol.keys(), key=sort_len)))
 def t_STATICSYMBOL(t):
+    t.lexer.begin('INITIAL')
     t.value = staticsymbol[t.value]
     return t
-t_STATICSYMBOL.__doc__ = r'|'.join(re.escape(w) for w in sorted(staticsymbol.keys(), key=lambda x: -len(x)))
 
+@TOKEN(r'|'.join(w for w in sorted(greeksymbol, key=sort_len)))
 def t_GREEKSYMBOL(t):
+    t.lexer.begin('INITIAL')
     t.value = '\\' + t.value
     return t
-t_GREEKSYMBOL.__doc__ = r'|'.join(w for w in sorted(greeksymbol, key=lambda x: -len(x)))
 
 def t_ENGLISHSYMBOL(t):
-    '[a-zA-Z]'
-    # TODO check if before this token end with english word?
-    t.value = ' ' + t.value
+    r'[a-zA-Z]'
+    t.lexer.begin('INITIAL')
     return t
-
-t_ignore = ' \t'
 
 def t_newline(t):
     r'\n+'
+    t.lexer.begin('matrix')
     t.lexer.lineno += t.value.count("\n")
 
 def t_error(t):
@@ -151,13 +204,18 @@ def t_error(t):
 import ply.lex as lex
 lex.lex()
 
-##############################################################################
+
+###############################################################################
+
 
 def p_statement_expr(t):
     '''statement : statement expression
                  | expression'''
     try:
-        t[0] = t[1] + t[2]
+        if t[2][0].isalpha() and t[1][-1].isalpha():
+            t[0] = t[1] + ' '+ t[2]
+        else:
+            t[0] = t[1] + t[2]
     except:
         t[0] = t[1]
 
@@ -166,9 +224,40 @@ def p_statement_expr(t):
     # FIXME remove 0 inside {} due to make compatible w/ python27 and py3k only.
 
 def p_expr_staticsymbol(t):
-    '''expression : STATICSYMBOL
-                  | GREEKSYMBOL
-                  | ENGLISHSYMBOL'''
+    '''expression : atom_sup
+                  | prts
+                  | matrix'''
+    t[0] = t[1]
+
+def p_prts(t):
+    '''prts : OP statement CP'''
+    # first -- test -- easy -- not accroding to spec implement of (...)
+    t[0] = r'\left(' + t[2] + r'\right)'
+
+def p_matrix(t):
+    '''matrix : OB_M statement CB'''
+    t[0] = r'\begin{matrix}' + t[2] + r'\end{matrix}'
+
+def p_atom_sup(t):
+    '''atom_sup : atom_sub
+                | atom_sub POW expression'''
+    try:
+        t[0] = t[1] + r'^{' + t[3] + r'}'
+    except:
+        t[0] = t[1]
+
+def p_atom_sub(t):
+    '''atom_sub : atom
+                | atom OB statement CB'''
+    try:
+        t[0] = t[1] + r'_{' + t[3] + r'}'
+    except:
+        t[0] = t[1]
+
+def p_atom(t):
+    '''atom : STATICSYMBOL
+            | GREEKSYMBOL
+            | ENGLISHSYMBOL'''
     t[0] = t[1]
 
 def p_error(t):
@@ -178,7 +267,8 @@ def p_error(t):
 import ply.yacc as yacc
 yacc.yacc()
 
-##############################################################################
+
+###############################################################################
 
 while 1:
     try:
