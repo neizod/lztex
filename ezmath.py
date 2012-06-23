@@ -117,28 +117,49 @@ greeksymbol = ( r'alpha',
                 r'(O|o)mega',
                 )
 
+function = { r'abs':  r'abs',
+             r'norm': r'norm',
+}
+
+sort_len = lambda x: -len(x)
+rm_parentheses = lambda t: t[6:-7]
+repeat_num = lambda a: a[0] + r'\overline{' + a[1] + '}'
+
+###############################################################################
+
 tokens = (
         'STATICSYMBOL',
         'GREEKSYMBOL',
         'ENGLISHSYMBOL',
+        'NUMBER',
 
+        'OP_M',
         'OP',
         'CP',
         'OB_M',
         'OB',
         'CB',
+        'OS',
+        'CS',
 
-        'POW',
+        'KW_POW',
+        'KW_CHOOSE',
+
+        'FUNCTION',
 )
 
 states = (
         ('matrix', 'inclusive'),
 )
 
-sort_len = lambda x: -len(x)
-
 
 ###############################################################################
+
+def t_OP_M(t):
+    r'\([ \t]*mod'
+    t.lexer.begin('matrix')
+    t.value = 'mod'
+    return t
 
 def t_OP(t):
     r'\('
@@ -165,20 +186,34 @@ def t_CB(t):
     t.lexer.begin('INITIAL')
     return t
 
-def t_POW(t):
+
+def t_KW_POW(t):
     r'\^'
     t.lexer.begin('matrix')
     return t
 
-@TOKEN(r'[ \t]')
-def t_WHITESPACE(t):
+def t_KW_CHOOSE(t):
+    r'choose'
     t.lexer.begin('matrix')
+    return t
+
+
+@TOKEN(r'|'.join(escape(w) for w in sorted(function.keys(), key=sort_len)))
+def t_FUNCTION(t):
+    # consider open matrix mode or not?
+    t.lexer.begin('matrix')
+    t.value = function[t.value]
+    return t
 
 @TOKEN(r'|'.join(escape(w) for w in sorted(staticsymbol.keys(), key=sort_len)))
 def t_STATICSYMBOL(t):
     t.lexer.begin('INITIAL')
     t.value = staticsymbol[t.value]
     return t
+
+@TOKEN(r'[ \t]')
+def t_WHITESPACE(t):
+    t.lexer.begin('matrix')
 
 @TOKEN(r'|'.join(w for w in sorted(greeksymbol, key=sort_len)))
 def t_GREEKSYMBOL(t):
@@ -190,6 +225,14 @@ def t_ENGLISHSYMBOL(t):
     r'[a-zA-Z]'
     t.lexer.begin('INITIAL')
     return t
+
+def t_NUMBER(t):
+    r'[0-9]+\.[0-9]*(...)[0-9](...)|[0-9]+(\.[0-9]+(...)?)?'
+    t.lexer.begin('INITIAL')
+    if t.value.count('.') == 7:
+        t.value = repeat_num(t.value.rsplit('...'))
+    return t
+
 
 def t_newline(t):
     r'\n+'
@@ -207,11 +250,27 @@ lex.lex()
 
 ###############################################################################
 
+def p_ezmath(t):
+    '''ezmath : sentence'''
+    t[0] = t[1]
 
-def p_statement_expr(t):
-    '''statement : statement expression
-                 | expression'''
+    # finale output.
+    print('fin {0}'.format(t[0]))
+    # FIXME remove 0 inside {} due to make compatible w/ python27 and py3k only.
+
+def p_sentence(t):
+    '''sentence :
+                | statement'''
     try:
+        t[0] = t[1]
+    except:
+        t[0] = '/*nothing*/'
+
+def p_statement(t):
+    '''statement : expression
+                 | statement expression'''
+    try:
+        # when assembly each part, check if going to joint alphabet?
         if t[2][0].isalpha() and t[1][-1].isalpha():
             t[0] = t[1] + ' '+ t[2]
         else:
@@ -223,16 +282,36 @@ def p_statement_expr(t):
     print('... {0}'.format(t[0]))
     # FIXME remove 0 inside {} due to make compatible w/ python27 and py3k only.
 
-def p_expr_staticsymbol(t):
+def p_expression(t):
     '''expression : atom_sup
-                  | prts
+                  | parentheses
+                  | parentheses_others
                   | matrix'''
     t[0] = t[1]
 
-def p_prts(t):
-    '''prts : OP statement CP'''
+def p_parentheses(t):
+    '''parentheses : OP sentence CP'''
     # first -- test -- easy -- not accroding to spec implement of (...)
     t[0] = r'\left(' + t[2] + r'\right)'
+
+def p_function(t):
+    '''function : FUNCTION parentheses'''
+    t[2] = rm_parentheses(t[2])
+    if t[1] == r'abs':
+        t[0] = r'\left|' + t[2] + r'\right|'
+    elif t[1] == r'norm':
+        t[0] = r'\left\|' + t[2] + r'\right\|'
+
+def p_parentheses_others(t):
+    '''parentheses_others : OS sentence CS
+                          | OP_M sentence CP
+                          | OP sentence KW_CHOOSE sentence CP'''
+    if t[1] == r'{':
+        t[0] = r'\left{' + t[2] + r'\right}'
+    elif t[1] == r'mod':
+        t[0] = r'\pmod{' + t[2] + r'}'
+    else:
+        t[0] = r'{' + t[2] + r'\choose' + t[4] + r'}'
 
 def p_matrix(t):
     '''matrix : OB_M statement CB'''
@@ -240,7 +319,7 @@ def p_matrix(t):
 
 def p_atom_sup(t):
     '''atom_sup : atom_sub
-                | atom_sub POW expression'''
+                | atom_sub KW_POW expression'''
     try:
         t[0] = t[1] + r'^{' + t[3] + r'}'
     except:
@@ -257,7 +336,9 @@ def p_atom_sub(t):
 def p_atom(t):
     '''atom : STATICSYMBOL
             | GREEKSYMBOL
-            | ENGLISHSYMBOL'''
+            | ENGLISHSYMBOL
+            | NUMBER
+            | function'''
     t[0] = t[1]
 
 def p_error(t):
