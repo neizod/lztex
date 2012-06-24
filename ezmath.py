@@ -63,8 +63,9 @@ staticsymbol = {'+':    r'+',
                 'infinity':   r'\infty',
 
                 'der':    r'\partial',
-                'nable':  r'\nabla',
+                'nabla':  r'\nabla',
 
+                # force wrap this with \e ... \e ??
                 'for all':    r'\forall',
                 'exists':     r'\exists',
                 'in':         r'\in',
@@ -84,7 +85,7 @@ staticsymbol = {'+':    r'+',
                 'Rset':       r'\mathbb{R}',
                 'Cset':       r'\mathbb{C}',
                 'Hset':       r'\mathbb{H}',
-                'Aleph':      r'\aleph',
+                'Aleph':      r'\aleph',       # lower case?
                 'Re':         r'\Re',
                 'Im':         r'\Im',
 
@@ -135,6 +136,7 @@ function = ( r'abs',
              r'floor',
              r'ceil',
              r'round',
+             r'sqrt',
              )
 
 sort_len = lambda x: -len(x)
@@ -149,7 +151,7 @@ tokens = (
         'ENGLISHSYMBOL',
         'NUMBER',
 
-        'OP_M',
+        'OP_MOD',
         'OP',
         'CP',
         'OB_MATRIX',
@@ -158,8 +160,10 @@ tokens = (
         'OS',
         'CS',
 
-        'KW_POW',
+        'KW_DIVISION',
+        'KW_POWER',
         'KW_CHOOSE',
+        'KW_ROOT',
 
         'CONTROL',
         'FUNCTION',
@@ -169,13 +173,17 @@ states = (
         ('matrix', 'inclusive'),
 )
 
+precedence = (
+        ('left', 'KW_DIVISION'),
+)
+
 
 ###############################################################################
 
-def t_OP_M(t):
+def t_OP_MOD(t):
     r'\([ \t]*mod'
     t.lexer.begin('matrix')
-    t.value = 'mod'
+    t.value = 'pmod'
     return t
 
 def t_OP(t):
@@ -186,11 +194,6 @@ def t_OP(t):
 def t_CP(t):
     r'\)'
     t.lexer.begin('INITIAL')
-    return t
-
-def t_OB(t):
-    r'\['
-    t.lexer.begin('matrix')
     return t
 
 @TOKEN(r'|'.join(escape(w) + r'[ \t]*\[' for w in sorted(matrix, key=sort_len)))
@@ -210,19 +213,44 @@ def t_matrix_OB_MATRIX(t):
     t.lexer.begin('matrix')
     return t
 
+def t_OB(t):
+    r'\['
+    t.lexer.begin('matrix')
+    return t
+
 def t_CB(t):
     r'\]'
     t.lexer.begin('INITIAL')
     return t
 
+def t_OS(t):
+    r'\{'
+    t.lexer.begin('matrix')
+    return t
 
-def t_KW_POW(t):
+def t_CS(t):
+    r'\}'
+    t.lexer.begin('INITIAL')
+    return t
+
+
+def t_KW_DIVISION(t):
+    r'\/'
+    t.lexer.begin('matrix')
+    return t
+
+def t_KW_POWER(t):
     r'\^'
     t.lexer.begin('matrix')
     return t
 
 def t_KW_CHOOSE(t):
     r'choose'
+    t.lexer.begin('matrix')
+    return t
+
+def t_KW_ROOT(t):
+    r'root'
     t.lexer.begin('matrix')
     return t
 
@@ -318,10 +346,15 @@ def p_statement(t):
     # FIXME remove 0 inside {} due to make compatible w/ python27 and py3k only.
 
 def p_expression(t):
-    '''expression : atom_sup
-                  | parentheses_others
-                  | matrix
+    '''expression : element
+                  | fraction
                   | control'''
+    t[0] = t[1]
+
+def p_element(t):
+    '''element : atom_sup
+               | parentheses_others
+               | matrix'''
     t[0] = t[1]
 
 def p_control(t):
@@ -358,9 +391,8 @@ def p_matrix_statement(t):
     # FIXME remove 0 inside {} due to make compatible w/ python27 and py3k only.
 
 def p_matrix_expression(t):
-    '''matrix_expression : atom_sup
-                         | parentheses_others
-                         | matrix
+    '''matrix_expression : element
+                         | fraction
                          | matrix_control'''
     t[0] = t[1]
 
@@ -374,8 +406,7 @@ def p_matrix_control(t):
 
 def p_parentheses(t):
     '''parentheses : OP sentence CP'''
-    # first -- test -- easy -- not accroding to spec implement of (...)
-    t[0] = r'\left(' + t[2] + r'\right)'
+    t[0] = r'\left({body}\right)'.format(body=t[2])
 
 def p_function(t):
     '''function : FUNCTION parentheses'''
@@ -396,24 +427,33 @@ def p_function(t):
         t[0] = r'\left\lceil' + t[2] + r'\right\rceil'
     elif t[1] == r'round':
         t[0] = r'\left\lfloor' + t[2] + r'\right\rceil'
+    else:
+        t[0] = r'\sqrt{' + t[2] + r'}'
 
+
+def p_fraction(t):
+    '''fraction : expression KW_DIVISION element'''
+    t[0] = r'\frac{{{div}}}{{{num}}}'.format(div=rm_parentheses(t[1]), num=rm_parentheses(t[3]))
 
 def p_parentheses_others(t):
     '''parentheses_others : OS sentence CS
-                          | OP_M sentence CP
-                          | OP sentence KW_CHOOSE sentence CP'''
+                          | OP_MOD sentence CP
+                          | OP sentence KW_CHOOSE sentence CP
+                          | OP sentence KW_ROOT sentence CP'''
     if t[1] == r'{':
-        t[0] = r'\left{' + t[2] + r'\right}'
-    elif t[1] == r'mod':
-        t[0] = r'\pmod{' + t[2] + r'}'
+        t[0] = r'\left\{{{body}\right\}}'.format(body=t[2])
+    elif t[1] == r'pmod':
+        t[0] = r'\pmod{{{num}}}'.format(num=t[2])
+    elif t[3] == r'choose':
+        t[0] = r'{{{div}\choose{num}}}'.format(div=t[2], num=t[4])
     else:
-        t[0] = r'{' + t[2] + r'\choose' + t[4] + r'}'
+        t[0] = r'\sqrt[{nth}]{{{root}}}'.format(nth=t[2], root=t[4])
 
 def p_atom_sup(t):
     '''atom_sup : atom_sub
-                | atom_sub KW_POW expression'''
+                | atom_sub KW_POWER element'''
     try:
-        t[0] = t[1] + r'^{' + rm_parentheses(t[3]) + r'}'
+        t[0] = r'{base}^{{{sup}}}'.format(base=t[1], sup=rm_parentheses(t[3]))
     except:
         t[0] = t[1]
 
@@ -421,7 +461,7 @@ def p_atom_sub(t):
     '''atom_sub : atom
                 | atom OB sentence CB'''
     try:
-        t[0] = t[1] + r'_{' + t[3] + r'}'
+        t[0] = r'{base}_{{{sub}}}'.format(base=t[1], sub=t[3])
     except:
         t[0] = t[1]
 
