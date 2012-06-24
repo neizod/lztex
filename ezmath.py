@@ -122,8 +122,8 @@ function = { r'abs':  r'abs',
 }
 
 sort_len = lambda x: -len(x)
-rm_parentheses = lambda t: t[6:-7]
 repeat_num = lambda a: a[0] + r'\overline{' + a[1] + '}'
+rm_parentheses = lambda t: t[6:-7] if t[:6] == r'\left(' and t[-7:] == r'\right)' else t
 
 ###############################################################################
 
@@ -145,6 +145,7 @@ tokens = (
         'KW_POW',
         'KW_CHOOSE',
 
+        'CONTROL',
         'FUNCTION',
 )
 
@@ -197,6 +198,11 @@ def t_KW_CHOOSE(t):
     t.lexer.begin('matrix')
     return t
 
+def t_CONTROL(t):
+    r',|;'
+    t.lexer.begin('matrix')
+    return t
+
 
 @TOKEN(r'|'.join(escape(w) for w in sorted(function.keys(), key=sort_len)))
 def t_FUNCTION(t):
@@ -245,7 +251,8 @@ def t_error(t):
 
 
 import ply.lex as lex
-lex.lex()
+lexer = lex.lex()
+lexer.begin('matrix')        # force input start with matrix state
 
 
 ###############################################################################
@@ -258,13 +265,14 @@ def p_ezmath(t):
     print('fin {0}'.format(t[0]))
     # FIXME remove 0 inside {} due to make compatible w/ python27 and py3k only.
 
+
 def p_sentence(t):
     '''sentence :
                 | statement'''
     try:
         t[0] = t[1]
     except:
-        t[0] = '/*nothing*/'
+        t[0] = '/*nothing*/'  # FIXME
 
 def p_statement(t):
     '''statement : expression
@@ -284,10 +292,58 @@ def p_statement(t):
 
 def p_expression(t):
     '''expression : atom_sup
-                  | parentheses
                   | parentheses_others
-                  | matrix'''
+                  | matrix
+                  | control'''
     t[0] = t[1]
+
+def p_control(t):
+    '''control : CONTROL'''
+    t[0] = t[1]
+
+
+def p_matrix(t):
+    '''matrix : OB_M matrix_sentence CB'''
+    t[0] = r'\begin{matrix}' + t[2] + r'\end{matrix}'
+
+def p_matrix_sentence(t):
+    '''matrix_sentence :
+                       | matrix_statement'''
+    try:
+        t[0] = t[1]
+    except:
+        t[0] = '/*nothing*/' # FIXME
+
+def p_matrix_statement(t):
+    '''matrix_statement : matrix_expression
+                        | matrix_statement matrix_expression'''
+    try:
+        # when assembly each part, check if going to joint alphabet?
+        if t[2][0].isalpha() and t[1][-1].isalpha():
+            t[0] = t[1] + ' '+ t[2]
+        else:
+            t[0] = t[1] + t[2]
+    except:
+        t[0] = t[1]
+
+    # simple debug.
+    print('... {0}'.format(t[0]))
+    # FIXME remove 0 inside {} due to make compatible w/ python27 and py3k only.
+
+def p_matrix_expression(t):
+    '''matrix_expression : atom_sup
+                         | parentheses_others
+                         | matrix
+                         | matrix_control'''
+    t[0] = t[1]
+
+def p_matrix_control(t):
+    '''matrix_control : CONTROL'''
+    if t[1] == ',':
+        t[0] = r'&'
+    else:
+        t[0] = r'\\'
+
 
 def p_parentheses(t):
     '''parentheses : OP sentence CP'''
@@ -313,21 +369,17 @@ def p_parentheses_others(t):
     else:
         t[0] = r'{' + t[2] + r'\choose' + t[4] + r'}'
 
-def p_matrix(t):
-    '''matrix : OB_M statement CB'''
-    t[0] = r'\begin{matrix}' + t[2] + r'\end{matrix}'
-
 def p_atom_sup(t):
     '''atom_sup : atom_sub
                 | atom_sub KW_POW expression'''
     try:
-        t[0] = t[1] + r'^{' + t[3] + r'}'
+        t[0] = t[1] + r'^{' + rm_parentheses(t[3]) + r'}'
     except:
         t[0] = t[1]
 
 def p_atom_sub(t):
     '''atom_sub : atom
-                | atom OB statement CB'''
+                | atom OB sentence CB'''
     try:
         t[0] = t[1] + r'_{' + t[3] + r'}'
     except:
@@ -338,6 +390,7 @@ def p_atom(t):
             | GREEKSYMBOL
             | ENGLISHSYMBOL
             | NUMBER
+            | parentheses
             | function'''
     t[0] = t[1]
 
@@ -353,6 +406,7 @@ yacc.yacc()
 
 while 1:
     try:
+        lexer.begin('matrix')      # force input to start with matrix state
         s = raw_input('calc > ')   # Use raw_input on Python 2
     except EOFError:
         break
