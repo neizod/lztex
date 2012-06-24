@@ -117,9 +117,25 @@ greeksymbol = ( r'alpha',
                 r'(O|o)mega',
                 )
 
-function = { r'abs':  r'abs',
-             r'norm': r'norm',
-}
+matrix = ( r'matrix',
+           r'borderless',
+           r'parentheses',
+           r'det',
+           r'norm',
+           r'cases',
+           r'',
+           )
+
+function = ( r'abs',
+             r'norm',
+             r'bra',
+             r'ket',
+             r'braket',
+             r'inner',
+             r'floor',
+             r'ceil',
+             r'round',
+             )
 
 sort_len = lambda x: -len(x)
 repeat_num = lambda a: a[0] + r'\overline{' + a[1] + '}'
@@ -136,7 +152,7 @@ tokens = (
         'OP_M',
         'OP',
         'CP',
-        'OB_M',
+        'OB_MATRIX',
         'OB',
         'CB',
         'OS',
@@ -177,8 +193,20 @@ def t_OB(t):
     t.lexer.begin('matrix')
     return t
 
-def t_matrix_OB_M(t):
-    r'\['
+@TOKEN(r'|'.join(escape(w) + r'[ \t]*\[' for w in sorted(matrix, key=sort_len)))
+def t_matrix_OB_MATRIX(t):
+    if 'parentheses' in t.value:
+        t.value = 'pmatrix'
+    elif 'borderless' in t.value:
+        t.value = 'matrix'
+    elif 'det' in t.value:
+        t.value = 'vmatrix'
+    elif 'norm' in t.value:
+        t.value = 'Vmatrix'
+    elif 'cases' in t.value:
+        t.value = 'cases'
+    else:
+        t.value = 'bmatrix'
     t.lexer.begin('matrix')
     return t
 
@@ -204,11 +232,10 @@ def t_CONTROL(t):
     return t
 
 
-@TOKEN(r'|'.join(escape(w) for w in sorted(function.keys(), key=sort_len)))
+@TOKEN(r'|'.join(escape(w) for w in sorted(function, key=sort_len)))
 def t_FUNCTION(t):
     # consider open matrix mode or not?
     t.lexer.begin('matrix')
-    t.value = function[t.value]
     return t
 
 @TOKEN(r'|'.join(escape(w) for w in sorted(staticsymbol.keys(), key=sort_len)))
@@ -303,8 +330,8 @@ def p_control(t):
 
 
 def p_matrix(t):
-    '''matrix : OB_M matrix_sentence CB'''
-    t[0] = r'\begin{matrix}' + t[2] + r'\end{matrix}'
+    '''matrix : OB_MATRIX matrix_sentence CB'''
+    t[0] = r'\begin{{{head}}}{body}\end{{{head}}}'.format(head=t[1], body=t[2])
 
 def p_matrix_sentence(t):
     '''matrix_sentence :
@@ -357,6 +384,19 @@ def p_function(t):
         t[0] = r'\left|' + t[2] + r'\right|'
     elif t[1] == r'norm':
         t[0] = r'\left\|' + t[2] + r'\right\|'
+    elif t[1] == r'bra':
+        t[0] = r'\left\langle' + t[2] + r'\right|'
+    elif t[1] == r'ket':
+        t[0] = r'\left|' + t[2] + r'\right\rangle'
+    elif t[1] == r'braket' or t[1] == r'inner':
+        t[0] = r'\left\langle' + t[2] + r'\right\rangle'
+    elif t[1] == r'floor':
+        t[0] = r'\left\lfloor' + t[2] + r'\right\rfloor'
+    elif t[1] == r'ceil':
+        t[0] = r'\left\lceil' + t[2] + r'\right\rceil'
+    elif t[1] == r'round':
+        t[0] = r'\left\lfloor' + t[2] + r'\right\rceil'
+
 
 def p_parentheses_others(t):
     '''parentheses_others : OS sentence CS
