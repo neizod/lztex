@@ -139,6 +139,17 @@ function = ( r'abs',
              r'sqrt',
              )
 
+summation = { r'Summation':  r'\sum',
+              r'Product':    r'\prod',
+              r'Coproduct':  r'\coprod',
+              r'Union':      r'\bigcup',
+              r'Intersect':  r'\bigcap',
+              r'integral':   r'\int',
+              r'limit':      r'\lim',
+              r'limit superior':     r'\limsup',
+              r'limit inferior':     r'\liminf',
+              }
+
 sort_len = lambda x: -len(x)
 repeat_num = lambda a: a[0] + r'\overline{' + a[1] + '}'
 rm_parentheses = lambda t: t[6:-7] if t[:6] == r'\left(' and t[-7:] == r'\right)' else t
@@ -146,6 +157,7 @@ rm_parentheses = lambda t: t[6:-7] if t[:6] == r'\left(' and t[-7:] == r'\right)
 ###############################################################################
 
 tokens = (
+        'EZMATH',
         'STATICSYMBOL',
         'GREEKSYMBOL',
         'ENGLISHSYMBOL',
@@ -167,6 +179,11 @@ tokens = (
 
         'CONTROL',
         'FUNCTION',
+
+        'SUMMATION',
+        'FOR',
+        'FROM',
+        'TO',
 )
 
 states = (
@@ -175,10 +192,17 @@ states = (
 
 precedence = (
         ('left', 'KW_DIVISION'),
+        ('right', 'SUMMATION'),
+        ('right', 'FOR', 'FROM', 'TO'),
 )
 
 
 ###############################################################################
+
+def t_EZMATH(t):
+    r'\n?\$\n?'
+    t.lexer.begin('matrix')
+    return t
 
 def t_OP_MOD(t):
     r'\([ \t]*mod'
@@ -260,9 +284,30 @@ def t_CONTROL(t):
     return t
 
 
+@TOKEN(r'|'.join(escape(w) for w in sorted(summation.keys(), key=sort_len)))
+def t_SUMMATION(t):
+    t.lexer.begin('matrix')
+    t.value = summation[t.value]
+    return t
+
+def t_FOR(t):
+    r'for'
+    t.lexer.begin('matrix')
+    return t
+
+def t_FROM(t):
+    r'from'
+    t.lexer.begin('matrix')
+    return t
+
+def t_TO(t):
+    r'to'
+    t.lexer.begin('matrix')
+    return t
+
+
 @TOKEN(r'|'.join(escape(w) for w in sorted(function, key=sort_len)))
 def t_FUNCTION(t):
-    # consider open matrix mode or not?
     t.lexer.begin('matrix')
     return t
 
@@ -312,14 +357,28 @@ lexer.begin('matrix')        # force input start with matrix state
 
 ###############################################################################
 
-def p_ezmath(t):
-    '''ezmath : sentence'''
-    t[0] = t[1]
+def p_lztex(t):
+    '''lztex :
+             | lztex ezmath'''
+    try:
+        t[0] = t[1] + t[2]
+    except:
+        t[0] = ''
 
     # finale output.
     print('fin {0}'.format(t[0]))
     # FIXME remove 0 inside {} due to make compatible w/ python27 and py3k only.
 
+
+def p_ezmath(t):
+    '''ezmath : EZMATH sentence EZMATH'''
+    t[0] = t[2]
+
+def p_ezmath_error(t):
+    '''ezmath : EZMATH error EZMATH'''
+    # simple implementaion of error handler for ezmath part
+    # TODO
+    t[0] = r'\ezmath_parser_error'
 
 def p_sentence(t):
     '''sentence :
@@ -348,6 +407,7 @@ def p_statement(t):
 def p_expression(t):
     '''expression : element
                   | fraction
+                  | summation
                   | control'''
     t[0] = t[1]
 
@@ -403,6 +463,35 @@ def p_matrix_control(t):
     else:
         t[0] = r'\\'
 
+
+def p_summation(t):
+    '''summation : SUMMATION sentence
+                 | SUMMATION sentence summation_boundary'''
+    try:
+        t[0] = t[1] + t[3] + t[2]
+    except:
+        sep = ' 'if t[2][0].isalpha() else ''
+        t[0] = t[1] + sep + t[2]
+
+def p_summation_boundary(t):
+    '''summation_boundary : FOR expression
+                          | FOR expression TO expression
+                          | FROM expression TO expression
+                          | FOR expression FROM expression TO expression'''
+    try:
+        t[2] = rm_parentheses(t[2])
+        t[4] = rm_parentheses(t[4])
+        t[6] = rm_parentheses(t[6])
+        t[0] = r'_{' + t[2] + '=' + t[4] + r'}^{' + t[6] + r'}'
+    except:
+        try:
+            if t[1] == 'for':
+                sep = ' ' if t[4][0].isalpha() else ''
+                t[0] = r'_{' + t[2] + r'\to' + sep + t[4] + r'}'
+            else:
+                t[0] = r'_{' + t[2] + r'}^{' + t[4] + r'}'
+        except:
+            t[0] = r'_{' + t[2] + r'}'
 
 def p_parentheses(t):
     '''parentheses : OP sentence CP'''
