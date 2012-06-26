@@ -157,7 +157,9 @@ rm_parentheses = lambda t: t[6:-7] if t[:6] == r'\left(' and t[-7:] == r'\right)
 ###############################################################################
 
 tokens = (
-        'EZMATH',
+        'BEGIN_EZMATH',
+        'END_EZMATH',
+
         'STATICSYMBOL',
         'GREEKSYMBOL',
         'ENGLISHSYMBOL',
@@ -201,10 +203,20 @@ precedence = (
 
 ###############################################################################
 
-def t_EZMATH(t):
-    r'\n?\$\n?'
+def t_TEXT(t):
+    r'[^\$]+'
+    return t
+
+def t_BEGIN_EZMATH(t):
+    r'\n?\$'
     t.lexer.begin('matrix')
     return t
+
+def t_ezmath_matrix_END_EZMATH(t):
+    r'\$\n?'
+    t.lexer.begin('INITIAL')
+    return t
+
 
 def t_ezmath_matrix_OP_MOD(t):
     r'\([ \t]*mod'
@@ -212,12 +224,12 @@ def t_ezmath_matrix_OP_MOD(t):
     t.value = 'pmod'
     return t
 
-def t_OP(t):
+def t_ezmath_matrix_OP(t):
     r'\('
     t.lexer.begin('matrix')
     return t
 
-def t_CP(t):
+def t_ezmath_matrix_CP(t):
     r'\)'
     t.lexer.begin('ezmath')
     return t
@@ -239,109 +251,109 @@ def t_matrix_OB_MATRIX(t):
     t.lexer.begin('matrix')
     return t
 
-def t_OB(t):
+def t_ezmath_matrix_OB(t):
     r'\['
     t.lexer.begin('matrix')
     return t
 
-def t_CB(t):
+def t_ezmath_matrix_CB(t):
     r'\]'
     t.lexer.begin('ezmath')
     return t
 
-def t_OS(t):
+def t_ezmath_matrix_OS(t):
     r'\{'
     t.lexer.begin('matrix')
     return t
 
-def t_CS(t):
+def t_ezmath_matrix_CS(t):
     r'\}'
     t.lexer.begin('ezmath')
     return t
 
 
-def t_KW_DIVISION(t):
+def t_ezmath_matrix_KW_DIVISION(t):
     r'\/'
     t.lexer.begin('matrix')
     return t
 
-def t_KW_POWER(t):
+def t_ezmath_matrix_KW_POWER(t):
     r'\^'
     t.lexer.begin('matrix')
     return t
 
-def t_KW_CHOOSE(t):
+def t_ezmath_matrix_KW_CHOOSE(t):
     r'choose'
     t.lexer.begin('matrix')
     return t
 
-def t_KW_ROOT(t):
+def t_ezmath_matrix_KW_ROOT(t):
     r'root'
     t.lexer.begin('matrix')
     return t
 
-def t_CONTROL(t):
+def t_ezmath_matrix_CONTROL(t):
     r',|;'
     t.lexer.begin('matrix')
     return t
 
 
 @TOKEN(r'|'.join(escape(w) for w in sorted(summation.keys(), key=sort_len)))
-def t_SUMMATION(t):
+def t_ezmath_matrix_SUMMATION(t):
     t.lexer.begin('matrix')
     t.value = summation[t.value]
     return t
 
-def t_FOR(t):
+def t_ezmath_matrix_FOR(t):
     r'for'
     t.lexer.begin('matrix')
     return t
 
-def t_FROM(t):
+def t_ezmath_matrix_FROM(t):
     r'from'
     t.lexer.begin('matrix')
     return t
 
-def t_TO(t):
+def t_ezmath_matrix_TO(t):
     r'to'
     t.lexer.begin('matrix')
     return t
 
 
 @TOKEN(r'|'.join(escape(w) for w in sorted(function, key=sort_len)))
-def t_FUNCTION(t):
+def t_ezmath_matrix_FUNCTION(t):
     t.lexer.begin('matrix')
     return t
 
 @TOKEN(r'|'.join(escape(w) for w in sorted(staticsymbol.keys(), key=sort_len)))
-def t_STATICSYMBOL(t):
+def t_ezmath_matrix_STATICSYMBOL(t):
     t.lexer.begin('ezmath')
     t.value = staticsymbol[t.value]
     return t
 
 @TOKEN(r'[ \t]')
-def t_WHITESPACE(t):
+def t_ezmath_matrix_WHITESPACE(t):
     t.lexer.begin('matrix')
 
 @TOKEN(r'|'.join(w for w in sorted(greeksymbol, key=sort_len)))
-def t_GREEKSYMBOL(t):
+def t_ezmath_matrix_GREEKSYMBOL(t):
     t.lexer.begin('ezmath')
     t.value = '\\' + t.value
     return t
 
-def t_ENGLISHSYMBOL(t):
+def t_ezmath_matrix_ENGLISHSYMBOL(t):
     r'[a-zA-Z]'
     t.lexer.begin('ezmath')
     return t
 
-def t_NUMBER(t):
+def t_ezmath_matrix_NUMBER(t):
     r'[0-9]+\.[0-9]*(...)[0-9](...)|[0-9]+(\.[0-9]+(...)?)?'
     t.lexer.begin('ezmath')
     if t.value.count('.') == 7:
         t.value = repeat_num(t.value.rsplit('...'))
     return t
 
-def t_TEXT(t):
+def t_ezmath_matrix_TEXT(t):
     r'"([^"\\]*?(\\.[^"\\]*?)*?)"'
     t.lexer.begin('ezmath')
     # TODO chk str identifier: frak"A" -> iden=frak, body=A
@@ -360,15 +372,15 @@ def t_error(t):
 
 
 import ply.lex as lex
-lexer = lex.lex()
-lexer.begin('matrix')        # force input start with matrix state
+lex.lex()
+# lexer = lex.lex()
 
 
 ###############################################################################
 
 def p_lztex(t):
     '''lztex :
-             | lztex ezmath'''
+             | lztex component'''
     try:
         t[0] = t[1] + t[2]
     except:
@@ -378,16 +390,24 @@ def p_lztex(t):
     print('fin {0}'.format(t[0]))
     # FIXME remove 0 inside {} due to make compatible w/ python27 and py3k only.
 
+def p_component(t):
+    '''component : TEXT
+                 | ezmath'''
+    t[0] = t[1]
 
 def p_ezmath(t):
-    '''ezmath : EZMATH sentence EZMATH'''
-    t[0] = t[2]
+    '''ezmath : BEGIN_EZMATH sentence END_EZMATH'''
+    if t[1][0] == '\n' and t[2][-1] == '\n':
+        t[0] = r'\[{body}\]'.format(body=t[2])
+    else:
+        t[0] = r'\({body}\)'.format(body=t[2])
+    # t[0] = r'\begin{{math}}{body}\end{{math}}'.format(body=t[2])
 
 def p_ezmath_error(t):
-    '''ezmath : EZMATH error EZMATH'''
+    '''ezmath : BEGIN_EZMATH error END_EZMATH'''
     # simple implementaion of error handler for ezmath part
     # TODO
-    t[0] = r'\ezmath_parser_error'
+    t[0] = r'/*ezmath_parser_error*/'
 
 def p_sentence(t):
     '''sentence :
@@ -585,7 +605,7 @@ yacc.yacc()
 
 while 1:
     try:
-        lexer.begin('matrix')      # force input to start with matrix state
+        # lexer.begin('matrix')      # force input to start with matrix state
         s = raw_input('calc > ')   # Use raw_input on Python 2
     except EOFError:
         break
