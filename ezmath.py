@@ -162,6 +162,7 @@ tokens = (
         'GREEKSYMBOL',
         'ENGLISHSYMBOL',
         'NUMBER',
+        'TEXT',
 
         'OP_MOD',
         'OP',
@@ -220,7 +221,7 @@ def t_CP(t):
     t.lexer.begin('INITIAL')
     return t
 
-@TOKEN(r'|'.join(escape(w) + r'[ \t]*\[' for w in sorted(matrix, key=sort_len)))
+@TOKEN(r'|'.join(escape(w) + r'\[' for w in sorted(matrix, key=sort_len)))
 def t_matrix_OB_MATRIX(t):
     if 'parentheses' in t.value:
         t.value = 'pmatrix'
@@ -337,6 +338,13 @@ def t_NUMBER(t):
     t.lexer.begin('INITIAL')
     if t.value.count('.') == 7:
         t.value = repeat_num(t.value.rsplit('...'))
+    return t
+
+def t_TEXT(t):
+    r'"([^"\\]*?(\\.[^"\\]*?)*?)"'
+    t.lexer.begin('INITIAL')
+    # TODO chk str identifier: frak"A" -> iden=frak, body=A
+    t.value = r'\text{{{body}}}'.format(body=t.value[1:-1])
     return t
 
 
@@ -559,6 +567,7 @@ def p_atom(t):
             | GREEKSYMBOL
             | ENGLISHSYMBOL
             | NUMBER
+            | TEXT
             | parentheses
             | function'''
     t[0] = t[1]
