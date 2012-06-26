@@ -373,22 +373,29 @@ def t_error(t):
 
 import ply.lex as lex
 lex.lex()
-# lexer = lex.lex()
 
 
 ###############################################################################
 
-def p_lztex(t):
-    '''lztex :
-             | lztex component'''
+def p_document(t):
+    '''document : paragraph'''
+    t[0] = t[1]
+    # finale output.
+    print('fin {0}'.format(t[0]))
+    # FIXME remove 0 inside {} due to make compatible w/ python27 and py3k only.
+
+
+def p_paragraph(t):
+    '''paragraph :
+                 | paragraph component'''
     try:
         t[0] = t[1] + t[2]
     except:
         t[0] = ''
 
-    # finale output.
-    print('fin {0}'.format(t[0]))
-    # FIXME remove 0 inside {} due to make compatible w/ python27 and py3k only.
+#   def p_lztex(t):
+#       '''lztex :
+#                | lztex component'''
 
 def p_component(t):
     '''component : TEXT
