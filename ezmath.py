@@ -2,7 +2,8 @@
 # - check why slash something (e.g. \abcdefg) doesn't raise a parser error,
 #   but pass silently (and seems to work?).
 # - in ezmath's text, why regex fail for open group?
-# - newline
+# - newline?
+# - positioning a[1][2][3] -> _{2}^{3}a_{1}
 
 import argparse
 
@@ -28,8 +29,6 @@ symbol = { r'+':    r'+',
            r'-':    r'-',
            r'*':    r'\times',
            r'.':    r'\cdot',
-           r'\*':   r'*',
-           r'\/':   r'\div',
 
            r'(+)':   r'\oplus',
            r'(-)':   r'\ominus',
@@ -42,8 +41,6 @@ symbol = { r'+':    r'+',
            r'-+':    r'\mp',
 
            r'~':     r'\sim',
-           r'deg':   r'{^\circ}',     # degree?
-           r'star':  r'\star',
 
            r'||':    r'\|',
            r'|':     r'|',
@@ -55,6 +52,12 @@ symbol = { r'+':    r'+',
            r'?':    r'?',
            r'%':    r'\%',
            r'&':    r'\&',
+
+           r'\*':   r'*',
+           r'\.':   r'.',
+           r'\,':   r',',
+           r'\;':   r';',
+           r'\/':   r'\div',
            r'\^':   r'\^',
            r'\$':   r'\$',
            r'\\':   r'\setminus',
@@ -94,7 +97,11 @@ symbol = { r'+':    r'+',
            r'|->':    r'\mapsto', 
 
            r'...':    r'\ldots',
+
            r'infinity':   r'\infty',
+
+           r'deg':   r'{^\circ}',     # degree?
+           r'star':  r'\star',
 
            r'der':    r'\partial',
            r'nabla':  r'\nabla',          # grad?
@@ -175,8 +182,9 @@ function = ( r'abs',
              r'floor',
              r'ceil',
              r'round',
-             r'sqrt',
+             r'list',
 
+             r'sqrt',
              r'dot',
              r'ddot',
              r'hat',
@@ -203,6 +211,10 @@ rm_parentheses = lambda t: t[6:-7] if t[:6] == r'\left(' and t[-7:] == r'\right)
 ###############################################################################
 
 tokens = (
+        'CHARACTER',
+        'NEWLINE',
+
+
         'BEGIN_EZMATH',
         'END_EZMATH',
 
@@ -249,8 +261,18 @@ precedence = (
 
 ###############################################################################
 
-def t_TEXT(t):
-    r'[^\$]+'
+def t_SYMBOL(t):   # TODO rename this not to make confuse with ezmath envoroinment.
+    r'LzTeX|EzMath'
+    if t.value == 'LzTeX':
+        t.value = r'\LzTeX{}'
+        flag.lztex_logo = True
+    elif t.value == 'EzMath':
+        t.value = r'\EzMath{}'
+        flag.ezmath_logo = True
+    return t
+
+def t_CHARACTER(t):
+    r'.'
     return t
 
 def t_BEGIN_EZMATH(t):
@@ -263,6 +285,12 @@ def t_ezmath_matrix_END_EZMATH(t):
     t.lexer.begin('INITIAL')
     return t
 
+def t_NEWLINE(t):
+    r'\n'
+    return t
+
+
+# Math lexer
 
 def t_ezmath_matrix_OP_MOD(t):
     r'\([ \t]*mod'
@@ -339,9 +367,10 @@ def t_ezmath_matrix_KW_ROOT(t):
     return t
 
 def t_ezmath_matrix_CONTROL(t):
-    r',|;'
+    r',|;|\n+'
     t.lexer.begin('matrix')
     return t
+#       t.lexer.lineno += t.value.count('\n')
 
 
 @TOKEN(r'|'.join(escape(w) for w in sorted(summation.keys(), key=sort_len)))
@@ -407,10 +436,6 @@ def t_ezmath_matrix_TEXT(t):
     return t
 
 
-def t_newline(t):
-    r'\n+'
-    t.lexer.begin('matrix')
-    t.lexer.lineno += t.value.count("\n")
 
 def t_error(t):
     print("Illegal character '%s'" % t.value[0])
@@ -425,14 +450,28 @@ lex.lex()
 
 def p_document(t):
     '''document : paragraph'''
-    t[0] = r'\documentclass{{article}}\usepackage{{amsmath}}\begin{{document}}{body}\end{{document}}'.format(body=t[1])
+    document = r'\documentclass{article}' + '\n'
+    prerequisite = ''
+    if flag.amsmath:
+        prerequisite += r'\usepackage{amsmath}' + '\n'
+    if flag.lztex_logo:
+        # FIXME make use of its own class
+        prerequisite += r'\usepackage{relsize}' + '\n'
+        prerequisite += r'\newcommand{\LzTeX}{L\kern-.31em\lower-.47ex\hbox{\smaller{\smaller{Z}}}\kern-.09emT\kern-.16em\lower+.51ex\hbox{E}\kern-.27exX}' + '\n'
+    if flag.ezmath_logo:
+        # FIXME make use of its own class
+        prerequisite += r'\usepackage{graphicx}' + '\n'
+        prerequisite += r'\newcommand{\EzMath}{\(\mathcal{E}\)\kern-.18em\lower+.51ex\hbox{\(\mathcal{Z}\)}\kern-.18em\(\mathcal{M}\)\kern-.12em\lower-.51ex\hbox{\scalebox{0.6}{\(\mathcal{ATH}\)}}}' + '\n'
+    if prerequisite != '':
+        document = ''.join([document, prerequisite])
+    document_body = '\n'.join([r'\begin{document}', t[1], r'\end{document}'])
+    t[0] = ''.join([document, document_body])
     # TODO push \n after: \documentclass, \usepackage, \begin, \end --
     #   AFTER remove interactive class when runnig prog
     # TODO include only needed package by checking math_flag
 
     # finale output.
-    print('fin {0}'.format(t[0]))
-    # FIXME remove 0 inside {} due to make compatible w/ python27 and py3k only.
+    print(t[0])
 
 
 def p_paragraph(t):
@@ -448,17 +487,26 @@ def p_paragraph(t):
 #                | lztex component'''
 
 def p_component(t):
-    '''component : TEXT
+    '''component : text
+                 | SYMBOL
+                 | NEWLINE
                  | ezmath'''
     t[0] = t[1]
 
+def p_text(t):
+    '''text : CHARACTER
+            | text CHARACTER'''
+    try:
+        t[0] = t[1] + t[2]
+    except:
+        t[0] = t[1]
+
 def p_ezmath(t):
     '''ezmath : BEGIN_EZMATH sentence END_EZMATH'''
-    if t[1][0] == '\n' and t[2][-1] == '\n':
+    if t[1][0] == '\n' and t[3][-1] == '\n':
         t[0] = r'\[{body}\]'.format(body=t[2])
     else:
         t[0] = r'\({body}\)'.format(body=t[2])
-    # t[0] = r'\begin{{math}}{body}\end{{math}}'.format(body=t[2])
 
 def p_ezmath_error(t):
     '''ezmath : BEGIN_EZMATH error END_EZMATH'''
@@ -505,12 +553,17 @@ def p_element(t):
 
 def p_control(t):
     '''control : CONTROL'''
-    t[0] = t[1]
+    if t[1] == ',' or t[1] == ';':
+        t[0] = t[1]
+    else:
+        t[0] = r'\\'
+    # TODO use ; as  & for paragraph alignment?
 
 
 def p_matrix(t):
     '''matrix : OB_MATRIX matrix_sentence CB'''
     t[0] = r'\begin{{{head}}}{body}\end{{{head}}}'.format(head=t[1], body=t[2])
+    flag.amsmath = True
 
 def p_matrix_sentence(t):
     '''matrix_sentence :
@@ -546,8 +599,10 @@ def p_matrix_control(t):
     '''matrix_control : CONTROL'''
     if t[1] == ',':
         t[0] = r'&'
-    else:
+    elif t[1] == ';':
         t[0] = r'\\'
+    else:
+        t[0] = ''
 
 
 def p_summation(t):
@@ -588,21 +643,23 @@ def p_function(t):
     '''function : FUNCTION parentheses'''
     t[2] = rm_parentheses(t[2])
     if t[1] == r'abs':
-        t[0] = r'\left|' + t[2] + r'\right|'
+        t[0] = r'\left|{body}\right|'.format(body=t[2])
     elif t[1] == r'norm':
-        t[0] = r'\left\|' + t[2] + r'\right\|'
+        t[0] = r'\left\|{body}\right\|'.format(body=t[2])
     elif t[1] == r'bra':
-        t[0] = r'\left\langle' + t[2] + r'\right|'
+        t[0] = r'\left\langle{body}\right|'.format(body=t[2])
     elif t[1] == r'ket':
-        t[0] = r'\left|' + t[2] + r'\right\rangle'
+        t[0] = r'\left|{body}\right\rangle'.format(body=t[2])
     elif t[1] == r'braket' or t[1] == r'inner':
-        t[0] = r'\left\langle' + t[2] + r'\right\rangle'
+        t[0] = r'\left\langle{body}\right\rangle'.format(body=t[2])
     elif t[1] == r'floor':
-        t[0] = r'\left\lfloor' + t[2] + r'\right\rfloor'
+        t[0] = r'\left\lfloor{body}\right\rfloor'.format(body=t[2])
     elif t[1] == r'ceil':
-        t[0] = r'\left\lceil' + t[2] + r'\right\rceil'
+        t[0] = r'\left\lceil{body}\right\rceil'.format(body=t[2])
     elif t[1] == r'round':
-        t[0] = r'\left\lfloor' + t[2] + r'\right\rceil'
+        t[0] = r'\left\lfloor{body}\right\rceil'.format(body=t[2])
+    elif t[1] == r'list':
+        t[0] = r'\left\[{body}\right\]'.format(body=t[2])
     else:
         # FIXME hat -> \widehat, vec -> \overrightarrow, bar -> overline ??
         t[0] = r'\{name}{{{body}}}'.format(name=t[1], body=t[2])
@@ -669,20 +726,37 @@ def py2_handler():
     except:
         pass
 
+class ParserFlag:
+    def __init__(self):
+        self.amsmath = False
+        self.lztex_logo = False
+        self.ezmath_logo = False
+
 def main():
     args = get_shell_args()
 
-    s = ''
-    while 1:
+    welcome_message = '''
+    LzTeX beta preview (nightly build, Jul 26 20:31:xx 2011)
+      Quick Docs: Type a document in LzTeX format when prompt.
+      On empty line hit ^D to see result, and hit ^D again to quit.
+    '''.strip().replace('    ', '')
+    print(welcome_message)
+    while True:
+        global flag
+        flag = ParserFlag()
         try:
-            s += input('>>> ')
+            s = input('>>> ') + '\n'
+            while True:
+                try:
+                    s += input('... ') + '\n'
+                except EOFError:
+                    print('')
+                    yacc.parse(s)
+                    break
         except EOFError:
             print('')
-            if s != '':
-                yacc.parse(s)
-                s = ''
-            else:
-                break
+            #yacc.parse(s)
+            exit('bye ^^)/')
 
 if __name__ == '__main__':
     py2_handler()
