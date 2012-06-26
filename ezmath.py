@@ -1,124 +1,162 @@
+# FIXME
+# - check why slash something (e.g. \abcdefg) doesn't raise a parser error,
+#   but pass silently (and seems to work?).
+# - in ezmath's text, why regex fail for open group?
+# - newline
+
+import argparse
+
+def get_shell_args():
+    '''Get command line arguments for initialize program'''
+    # TODO write a user-friendly description
+
+    parser = argparse.ArgumentParser(description="(a desc to this prog)")
+    parser.add_argument('files', metavar='FILE', nargs='*',
+                        type=argparse.FileType('r'),
+                        help='(input file help desc)')
+    args = parser.parse_args()
+
+    return args
+
+
+###############################################################################
+
 from ply.lex import TOKEN
 from re import escape
 
-staticsymbol = {'+':    r'+', 
-                '-':    r'-',
-                '*':    r'\times',
-                '.':    r'\cdot',
-                'ast':  r'*',          # full name?
-                '//':   r'\div',
+symbol = { r'+':    r'+',
+           r'-':    r'-',
+           r'*':    r'\times',
+           r'.':    r'\cdot',
+           r'\*':   r'*',
+           r'\/':   r'\div',
 
-                '(+)':   r'\oplus',
-                '(-)':   r'\ominus',
-                '(*)':   r'\otimes',
-                '(.)':   r'\odot',
-                '(ast)': r'\circleast',
-                '(/)':   r'\oslash',   # (//) as above?
+           r'(+)':   r'\oplus',
+           r'(-)':   r'\ominus',
+           r'(*)':   r'\otimes',
+           r'(.)':   r'\odot',
+           r'(\*)':  r'\circleast',
+           r'(\/)':  r'\oslash',
 
-                '+-':    r'\pm',
-                '-+':    r'\mp',
+           r'+-':    r'\pm',
+           r'-+':    r'\mp',
 
-                '~':     r'\sim',
-                'deg':   r'{^\circ}', # degree?
-                'star':  r'\star',
+           r'~':     r'\sim',
+           r'deg':   r'{^\circ}',     # degree?
+           r'star':  r'\star',
 
-                '||':    r'\|',
-                '|':     r'|',
+           r'||':    r'\|',
+           r'|':     r'|',
 
-                # TODO \$
+           r"'":    r"'",
+           r':':    r':',
+           r'!':    r'!',
+           r'@':    r'@',
+           r'?':    r'?',
+           r'%':    r'\%',
+           r'&':    r'\&',
+           r'\^':   r'\^',
+           r'\$':   r'\$',
+           r'\\':   r'\setminus',
 
-                # ================================
+           # ================================
 
-                '=':      r'=',
-                '==':     r'\equiv',
-                '~=':     r'\cong',
-                '~~':     r'\approx',
-                'propto': r'\propto',
-                '!=':     r'\neq',
-                '<':      r'\lt',
-                '>':      r'\gt',
-                '<<':     r'\ll',
-                '>>':     r'\gg',
-                '<=':     r'\leq',    # '=<' like haskell due to arrow conflict
-                '>=':     r'\geq',
-                '-<':     r'\prec',
-                '>-':     r'\succ',
+           r'=':      r'=',
+           r'==':     r'\equiv',
+           r'~=':     r'\cong',
+           r'~~':     r'\approx',
+           r'propto': r'\propto',
+           r'!=':     r'\neq',
+           r'<':      r'\lt',
+           r'>':      r'\gt',
+           r'<<':     r'\ll',
+           r'>>':     r'\gg',
+           r'<=':     r'\leq',    # '=<' like haskell due to arrow conflict
+           r'>=':     r'\geq',
+           r'-<':     r'\prec',
+           r'>-':     r'\succ',
 
-                'and':    r'\land',
-                'or':     r'\lor',
-                'not':    r'\neg',
-                '<->':    r'\leftrightarrow',
-                '<-->':   r'\longleftrightarrow',
-                '->':     r'\rightarrow',
-                '-->':    r'\longrightarrow',
-                '<-':     r'\leftarrow',
-                '<--':    r'\longleftarrow',
-                '<=>':    r'\Leftrightarrow',
-                '<==>':   r'\Longleftrightarrow',
-                '=>':     r'\Rightarrow',
-                '==>':    r'\Longrightarrow',
-                #'<=':     r'\Leftarrow',       # see above
-                '<==':    r'\Longleftarrow',
-                '|->':    r'\mapsto', 
+           r'and':    r'\land',
+           r'or':     r'\lor',
+           r'not':    r'\neg',
+           r'<->':    r'\leftrightarrow',
+           r'<-->':   r'\longleftrightarrow',
+           r'->':     r'\rightarrow',
+           r'-->':    r'\longrightarrow',
+           r'<-':     r'\leftarrow',
+           r'<--':    r'\longleftarrow',
+           r'<=>':    r'\Leftrightarrow',
+           r'<==>':   r'\Longleftrightarrow',
+           r'=>':     r'\Rightarrow',
+           r'==>':    r'\Longrightarrow',
+           #'<=':     r'\Leftarrow',       # see above
+           r'<==':    r'\Longleftarrow',
+           r'|->':    r'\mapsto', 
 
-                '...':    r'\ldots',
-                'infinity':   r'\infty',
+           r'...':    r'\ldots',
+           r'infinity':   r'\infty',
 
-                'der':    r'\partial',
-                'nabla':  r'\nabla',
+           r'der':    r'\partial',
+           r'nabla':  r'\nabla',          # grad?
 
-                # force wrap this with \e ... \e ??
-                'for all':    r'\forall',
-                'exists':     r'\exists',
-                'in':         r'\in',
-                'not in':     r'\notin',
-                'subset':     r'\subseteq',
-                'superset':   r'\supseteq',
+           # force wrap this with \e ... \e ??
+           r'for all':    r'\forall',
+           r'exists':     r'\exists',
+           r'in':         r'\in',
+           r'not in':     r'\notin',
+           r'subset':     r'\subseteq',
+           r'superset':   r'\supseteq',
 
-                'union':      r'\cup',
-                'intersect':  r'\cap',
+           r'union':      r'\cup',
+           r'intersect':  r'\cap',
 
-                'empty':      r'\emptyset',
-                'Eset':       r'\varnothing',
-                'Nset':       r'\mathbb{N}',
-                'Zset':       r'\mathbb{Z}',
-                'Pset':       r'\mathbb{P}',
-                'Qset':       r'\mathbb{Q}',
-                'Rset':       r'\mathbb{R}',
-                'Cset':       r'\mathbb{C}',
-                'Hset':       r'\mathbb{H}',
-                'Aleph':      r'\aleph',       # lower case?
-                'Re':         r'\Re',
-                'Im':         r'\Im',
+           r'empty':      r'\emptyset',
+           r'Eset':       r'\varnothing',
+           r'Nset':       r'\mathbb{N}',
+           r'Zset':       r'\mathbb{Z}',
+           r'Pset':       r'\mathbb{P}',
+           r'Qset':       r'\mathbb{Q}',
+           r'Rset':       r'\mathbb{R}',
+           r'Cset':       r'\mathbb{C}',
+           r'Hset':       r'\mathbb{H}',
+           r'Aleph':      r'\aleph',       # lower case?
+           r'Re':         r'\Re',
+           r'Im':         r'\Im',
 
-                # TODO function names
+           r'hbar':       r'\hbar',
+           r'ell':        r'\ell',
+           r'inodot':     r'\imath',        # as original imath, jmath?
+           r'jnodot':     r'\jmath',
 
-                }
-greeksymbol = ( r'alpha',
-                r'beta',
-                r'(G|g)amma',
-                r'(D|d)elta',
-                r'(var)?epsilon',
-                r'zeta',
-                r'eta',
-                r'(T|(var)?t)heta',
-                r'iota',
-                r'kappa',
-                r'(L|l)ambda',
-                r'mu',
-                r'nu',
-                r'(X|x)i',
-                r'omicron',
-                r'(P|(var)?p)i',
-                r'(var)?rho',
-                r'(S|(var)?s)igma',
-                r'tau',
-                r'(U|u)psilon',
-                r'(P|(var)?p)hi',
-                r'chi',
-                r'(P|p)si',
-                r'(O|o)mega',
-                )
+           # TODO function names
+
+           }
+
+# FIXME use { ... } as set instead of tuple (ignore py26-- compatibility issue)
+greek = ( r'alpha',
+          r'beta',
+          r'(G|g)amma',
+          r'(D|d)elta',
+          r'(var)?epsilon',
+          r'zeta',
+          r'eta',
+          r'(T|(var)?t)heta',
+          r'iota',
+          r'kappa',
+          r'(L|l)ambda',
+          r'mu',
+          r'nu',
+          r'(X|x)i',
+          r'omicron',
+          r'(P|(var)?p)i',
+          r'(var)?rho',
+          r'(S|(var)?s)igma',
+          r'tau',
+          r'(U|u)psilon',
+          r'(P|(var)?p)hi',
+          r'chi',
+          r'(P|p)si',
+          r'(O|o)mega', )
 
 matrix = ( r'matrix',
            r'borderless',
@@ -126,8 +164,7 @@ matrix = ( r'matrix',
            r'det',
            r'norm',
            r'cases',
-           r'',
-           )
+           r'', )
 
 function = ( r'abs',
              r'norm',
@@ -139,7 +176,12 @@ function = ( r'abs',
              r'ceil',
              r'round',
              r'sqrt',
-             )
+
+             r'dot',
+             r'ddot',
+             r'hat',
+             r'vec',
+             r'bar', )
 
 summation = { r'Summation':  r'\sum',
               r'Product':    r'\prod',
@@ -147,10 +189,12 @@ summation = { r'Summation':  r'\sum',
               r'Union':      r'\bigcup',
               r'Intersect':  r'\bigcap',
               r'integral':   r'\int',
+              # TODO \oint -> round integral,
+              #      \iint -> double integral,
+              #      \iiint -> tripple integral
               r'limit':      r'\lim',
               r'limit superior':     r'\limsup',
-              r'limit inferior':     r'\liminf',
-              }
+              r'limit inferior':     r'\liminf', }
 
 sort_len = lambda x: -len(x)
 repeat_num = lambda a: a[0] + r'\overline{' + a[1] + '}'
@@ -162,9 +206,9 @@ tokens = (
         'BEGIN_EZMATH',
         'END_EZMATH',
 
-        'STATICSYMBOL',
-        'GREEKSYMBOL',
-        'ENGLISHSYMBOL',
+        'SYMBOL',
+        'GREEK',
+        'ENGLISH',
         'NUMBER',
         'TEXT',
 
@@ -327,23 +371,23 @@ def t_ezmath_matrix_FUNCTION(t):
     t.lexer.begin('matrix')
     return t
 
-@TOKEN(r'|'.join(escape(w) for w in sorted(staticsymbol.keys(), key=sort_len)))
-def t_ezmath_matrix_STATICSYMBOL(t):
+@TOKEN(r'|'.join(escape(w) for w in sorted(symbol.keys(), key=sort_len)))
+def t_ezmath_matrix_SYMBOL(t):
     t.lexer.begin('ezmath')
-    t.value = staticsymbol[t.value]
+    t.value = symbol[t.value]
     return t
 
 @TOKEN(r'[ \t]')
 def t_ezmath_matrix_WHITESPACE(t):
     t.lexer.begin('matrix')
 
-@TOKEN(r'|'.join(w for w in sorted(greeksymbol, key=sort_len)))
-def t_ezmath_matrix_GREEKSYMBOL(t):
+@TOKEN(r'|'.join(w for w in sorted(greek, key=sort_len)))
+def t_ezmath_matrix_GREEK(t):
     t.lexer.begin('ezmath')
     t.value = '\\' + t.value
     return t
 
-def t_ezmath_matrix_ENGLISHSYMBOL(t):
+def t_ezmath_matrix_ENGLISH(t):
     r'[a-zA-Z]'
     t.lexer.begin('ezmath')
     return t
@@ -382,6 +426,10 @@ lex.lex()
 def p_document(t):
     '''document : paragraph'''
     t[0] = r'\documentclass{{article}}\usepackage{{amsmath}}\begin{{document}}{body}\end{{document}}'.format(body=t[1])
+    # TODO push \n after: \documentclass, \usepackage, \begin, \end --
+    #   AFTER remove interactive class when runnig prog
+    # TODO include only needed package by checking math_flag
+
     # finale output.
     print('fin {0}'.format(t[0]))
     # FIXME remove 0 inside {} due to make compatible w/ python27 and py3k only.
@@ -505,6 +553,7 @@ def p_matrix_control(t):
 def p_summation(t):
     '''summation : SUMMATION sentence
                  | SUMMATION sentence summation_boundary'''
+    # TODO use \limits ro \displaystyle to force make it upper and lower of symb
     try:
         t[0] = t[1] + t[3] + t[2]
     except:
@@ -555,7 +604,8 @@ def p_function(t):
     elif t[1] == r'round':
         t[0] = r'\left\lfloor' + t[2] + r'\right\rceil'
     else:
-        t[0] = r'\sqrt{' + t[2] + r'}'
+        # FIXME hat -> \widehat, vec -> \overrightarrow, bar -> overline ??
+        t[0] = r'\{name}{{{body}}}'.format(name=t[1], body=t[2])
 
 
 def p_fraction(t):
@@ -593,9 +643,9 @@ def p_atom_sub(t):
         t[0] = t[1]
 
 def p_atom(t):
-    '''atom : STATICSYMBOL
-            | GREEKSYMBOL
-            | ENGLISHSYMBOL
+    '''atom : SYMBOL
+            | GREEK
+            | ENGLISH
             | NUMBER
             | TEXT
             | parentheses
@@ -612,15 +662,31 @@ yacc.yacc()
 
 ###############################################################################
 
-while 1:
+def py2_handler():
+    # FIXME simple input handler for python2
     try:
-        # lexer.begin('matrix')      # force input to start with matrix state
-        s = raw_input('calc > ')   # Use raw_input on Python 2
-    except EOFError:
-        break
-    yacc.parse(s)
+        input = raw_input
+    except:
+        pass
 
+def main():
+    args = get_shell_args()
 
+    s = ''
+    while 1:
+        try:
+            s += input('>>> ')
+        except EOFError:
+            print('')
+            if s != '':
+                yacc.parse(s)
+                s = ''
+            else:
+                break
+
+if __name__ == '__main__':
+    py2_handler()
+    main()
 
 
 
