@@ -5,7 +5,7 @@ staticsymbol = {'+':    r'+',
                 '-':    r'-',
                 '*':    r'\times',
                 '.':    r'\cdot',
-                'ast':  r'*',
+                'ast':  r'*',          # full name?
                 '//':   r'\div',
 
                 '(+)':   r'\oplus',
@@ -13,7 +13,7 @@ staticsymbol = {'+':    r'+',
                 '(*)':   r'\otimes',
                 '(.)':   r'\odot',
                 '(ast)': r'\circleast',
-                '(/)':   r'\oslash',
+                '(/)':   r'\oslash',   # (//) as above?
 
                 '+-':    r'\pm',
                 '-+':    r'\mp',
@@ -24,6 +24,8 @@ staticsymbol = {'+':    r'+',
 
                 '||':    r'\|',
                 '|':     r'|',
+
+                # TODO \$
 
                 # ================================
 
@@ -379,7 +381,7 @@ lex.lex()
 
 def p_document(t):
     '''document : paragraph'''
-    t[0] = t[1]
+    t[0] = r'\documentclass{{article}}\usepackage{{amsmath}}\begin{{document}}{body}\end{{document}}'.format(body=t[1])
     # finale output.
     print('fin {0}'.format(t[0]))
     # FIXME remove 0 inside {} due to make compatible w/ python27 and py3k only.
