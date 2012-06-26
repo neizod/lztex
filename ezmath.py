@@ -188,6 +188,7 @@ tokens = (
 )
 
 states = (
+        ('ezmath', 'exclusive'),
         ('matrix', 'inclusive'),
 )
 
@@ -205,7 +206,7 @@ def t_EZMATH(t):
     t.lexer.begin('matrix')
     return t
 
-def t_OP_MOD(t):
+def t_ezmath_matrix_OP_MOD(t):
     r'\([ \t]*mod'
     t.lexer.begin('matrix')
     t.value = 'pmod'
@@ -218,7 +219,7 @@ def t_OP(t):
 
 def t_CP(t):
     r'\)'
-    t.lexer.begin('INITIAL')
+    t.lexer.begin('ezmath')
     return t
 
 @TOKEN(r'|'.join(escape(w) + r'\[' for w in sorted(matrix, key=sort_len)))
@@ -245,7 +246,7 @@ def t_OB(t):
 
 def t_CB(t):
     r'\]'
-    t.lexer.begin('INITIAL')
+    t.lexer.begin('ezmath')
     return t
 
 def t_OS(t):
@@ -255,7 +256,7 @@ def t_OS(t):
 
 def t_CS(t):
     r'\}'
-    t.lexer.begin('INITIAL')
+    t.lexer.begin('ezmath')
     return t
 
 
@@ -314,7 +315,7 @@ def t_FUNCTION(t):
 
 @TOKEN(r'|'.join(escape(w) for w in sorted(staticsymbol.keys(), key=sort_len)))
 def t_STATICSYMBOL(t):
-    t.lexer.begin('INITIAL')
+    t.lexer.begin('ezmath')
     t.value = staticsymbol[t.value]
     return t
 
@@ -324,25 +325,25 @@ def t_WHITESPACE(t):
 
 @TOKEN(r'|'.join(w for w in sorted(greeksymbol, key=sort_len)))
 def t_GREEKSYMBOL(t):
-    t.lexer.begin('INITIAL')
+    t.lexer.begin('ezmath')
     t.value = '\\' + t.value
     return t
 
 def t_ENGLISHSYMBOL(t):
     r'[a-zA-Z]'
-    t.lexer.begin('INITIAL')
+    t.lexer.begin('ezmath')
     return t
 
 def t_NUMBER(t):
     r'[0-9]+\.[0-9]*(...)[0-9](...)|[0-9]+(\.[0-9]+(...)?)?'
-    t.lexer.begin('INITIAL')
+    t.lexer.begin('ezmath')
     if t.value.count('.') == 7:
         t.value = repeat_num(t.value.rsplit('...'))
     return t
 
 def t_TEXT(t):
     r'"([^"\\]*?(\\.[^"\\]*?)*?)"'
-    t.lexer.begin('INITIAL')
+    t.lexer.begin('ezmath')
     # TODO chk str identifier: frak"A" -> iden=frak, body=A
     t.value = r'\text{{{body}}}'.format(body=t.value[1:-1])
     return t
