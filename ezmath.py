@@ -1,3 +1,17 @@
+
+
+
+# ============================== TODO ============================== 
+#
+# check build time manually:
+#
+# vi cmd:          /nightly<enter>        change time at this line
+
+
+
+
+
+
 # FIXME
 # - check why slash something (e.g. \abcdefg) doesn't raise a parser error,
 #   but pass silently (and seems to work?).
@@ -734,13 +748,15 @@ class ParserFlag:
 
 # FIXME quick hack for build-in help.
 def LzTeX():
-    '''some help?'''
+    '''some help?
+    
+    No <=, use =< instead (Haskell style).'''
 
 def main():
     args = get_shell_args()
 
     welcome_message = '''
-    LzTeX beta preview (nightly build, Jul 26 20:31:xx 2011)
+    LzTeX beta preview (nightly build, Wed Jul 27 00:54:xx ICT 2011)
       Quick Docs: Type a document in LzTeX format when prompt.
       On empty line hit ^D to see result, and hit ^D again to quit.
     '''.strip().replace('    ', '')
