@@ -732,6 +732,10 @@ class ParserFlag:
         self.lztex_logo = False
         self.ezmath_logo = False
 
+# FIXME quick hack for build-in help.
+def LzTeX():
+    '''some help?'''
+
 def main():
     args = get_shell_args()
 
@@ -745,17 +749,24 @@ def main():
         global flag
         flag = ParserFlag()
         try:
-            s = input('>>> ') + '\n'
-            while True:
-                try:
-                    s += input('... ') + '\n'
-                except EOFError:
-                    print('')
-                    yacc.parse(s)
-                    break
+            s = input('>>> ')
+
+            # FIXME quick hack for invoke intepreter help command.
+            if s == r'\h':
+                help(LzTeX)
+            elif s == r'\q':
+                raise(EOFError)
+            else:
+                while True:
+                    try:
+                        s += '\n'
+                        s += input('... ')
+                    except EOFError:
+                        print('')
+                        yacc.parse(s)
+                        break
         except EOFError:
             print('')
-            #yacc.parse(s)
             exit('bye ^^)/')
 
 if __name__ == '__main__':
