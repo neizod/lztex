@@ -212,7 +212,11 @@ rm_parentheses = lambda t: t[6:-7] if t[:6] == r'\left(' and t[-7:] == r'\right)
 
 tokens = (
         'CHARACTER',
+        'WHITESPACE',
+        'QUOTE',
         'NEWLINE',
+        
+        'EMPHASIS',
 
 
         'BEGIN_EZMATH',
@@ -269,25 +273,64 @@ def t_SYMBOL(t):   # TODO rename this not to make confuse with ezmath envoroinme
     elif t.value == 'EzMath':
         t.value = r'\EzMath{}'
         flag.ezmath_logo = True
+    t.lexer.begin_quote = False
+    return t
+
+def t_WHITESPACE(t):
+    '[ \t]+'
+    t.lexer.begin_quote = True
+    return t
+#   if t.value[-1] in ("'", '"'):
+#       t.lexer.backward(1)
+#       t.lexer.begin_quote = True
+#       t.value = t.value[:-1]
+
+def t_EMPHASIS(t):
+    r'(?P<star>(\*|_){1,3})[^\*]+(?P=star)'
+    # TODO enable escape \*, \_ inside
+    if t.value[:3] in ('***', '___'):
+        t.value = r'\textbf{{\emph{{{text}}}}}'.format(text=t.value[3:-3])
+    elif t.value[:2] in ('**', '__'):
+        t.value = r'\textbf{{{text}}}'.format(text=t.value[2:-2])
+    else:
+        t.value = r'\emph{{{text}}}'.format(text=t.value[1:-1])
+    t.lexer.begin_quote = False
+    return t
+
+
+def t_QUOTE(t):
+    r'\'|"'
+    if t.lexer.begin_quote:
+        t.value = '`' if t.value == "'" else '``'
+        t.lexer.begin_quote = False
+    else:
+        t.value = "'" if t.value == "'" else "''"
+        t.lexer.begin_quote = True
+    return t
+
+def t_NEWLINE(t):
+    r'\n'
+    t.lexer.begin_quote = True
     return t
 
 def t_CHARACTER(t):
     r'.'
+    #r'[a-zA-Z0-9]'
+    t.lexer.begin_quote = False
     return t
 
 def t_BEGIN_EZMATH(t):
     r'\n?\$'
     t.lexer.begin('matrix')
+    t.lexer.begin_quote = False
     return t
 
 def t_ezmath_matrix_END_EZMATH(t):
     r'\$\n?'
     t.lexer.begin('INITIAL')
+    t.lexer.begin_quote = False
     return t
 
-def t_NEWLINE(t):
-    r'\n'
-    return t
 
 
 # Math lexer
@@ -443,7 +486,7 @@ def t_error(t):
 
 
 import ply.lex as lex
-lex.lex()
+lexer = lex.lex()
 
 
 ###############################################################################
@@ -489,6 +532,9 @@ def p_paragraph(t):
 def p_component(t):
     '''component : text
                  | SYMBOL
+                 | WHITESPACE
+                 | QUOTE
+                 | EMPHASIS
                  | NEWLINE
                  | ezmath'''
     t[0] = t[1]
@@ -732,6 +778,7 @@ class ParserFlag:
         self.lztex_logo = False
         self.ezmath_logo = False
 
+
 # FIXME quick hack for build-in help.
 def LzTeX():
     '''some help?
@@ -765,6 +812,7 @@ def main():
                         s += input('... ')
                     except EOFError:
                         print('')
+                        lexer.begin_quote = True
                         yacc.parse(s)
                         break
         except EOFError:
