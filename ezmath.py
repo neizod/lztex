@@ -1,17 +1,3 @@
-
-
-
-# ============================== TODO ============================== 
-#
-# check build time manually:
-#
-# vi cmd:          /nightly<enter>        change time at this line
-
-
-
-
-
-
 # FIXME
 # - check why slash something (e.g. \abcdefg) doesn't raise a parser error,
 #   but pass silently (and seems to work?).
@@ -756,7 +742,7 @@ def main():
     args = get_shell_args()
 
     welcome_message = '''
-    LzTeX beta preview (nightly build, Wed Jul 27 00:54:xx ICT 2011)
+    LzTeX beta preview (nightly build, Wed, Jun 27, 2012 11:31:21 AM)
       Quick Docs: Type a document in LzTeX format when prompt.
       On empty line hit ^D to see result, and hit ^D again to quit.
     '''.strip().replace('    ', '')
