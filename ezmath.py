@@ -742,7 +742,7 @@ def main():
     args = get_shell_args()
 
     welcome_message = '''
-    LzTeX beta preview (nightly build, Wed, Jun 27, 2012 11:31:21 AM)
+    LzTeX beta preview (nightly build: Wed, 27 Jun 2012 11:51:12 +0700)
       Quick Docs: Type a document in LzTeX format when prompt.
       On empty line hit ^D to see result, and hit ^D again to quit.
     '''.strip().replace('    ', '')
