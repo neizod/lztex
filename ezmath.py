@@ -214,6 +214,7 @@ tokens = (
         'CHARACTER',
         'WHITESPACE',
         'QUOTE',
+        'UNDERLINE',
         'NEWLINE',
         
         'EMPHASIS',
@@ -308,16 +309,10 @@ def t_QUOTE(t):
         t.lexer.begin_quote = True
     return t
 
-def t_NEWLINE(t):
-    r'\n'
-    t.lexer.begin_quote = True
+def t_UNDERLINE(t):
+    r'\n(-|=)+\n'
     return t
 
-def t_CHARACTER(t):
-    r'.'
-    #r'[a-zA-Z0-9]'
-    t.lexer.begin_quote = False
-    return t
 
 def t_BEGIN_EZMATH(t):
     r'\n?\$'
@@ -328,6 +323,17 @@ def t_BEGIN_EZMATH(t):
 def t_ezmath_matrix_END_EZMATH(t):
     r'\$\n?'
     t.lexer.begin('INITIAL')
+    t.lexer.begin_quote = False
+    return t
+
+def t_NEWLINE(t):
+    r'\n'
+    t.lexer.begin_quote = True
+    return t
+
+def t_CHARACTER(t):
+    r'.'
+    #r'[a-zA-Z0-9]'
     t.lexer.begin_quote = False
     return t
 
@@ -519,7 +525,7 @@ def p_document(t):
 
 def p_paragraph(t):
     '''paragraph :
-                 | paragraph component'''
+                 | paragraph sub_para'''
     try:
         t[0] = t[1] + t[2]
     except:
@@ -528,6 +534,15 @@ def p_paragraph(t):
 #   def p_lztex(t):
 #       '''lztex :
 #                | lztex component'''
+
+def p_sub_para(t):
+    '''sub_para : component
+                | component UNDERLINE'''
+    try:
+        t[2]
+        t[0] = r'\header??{' + t[1] + r'}'    # TODO
+    except:
+        t[0] = t[1]
 
 def p_component(t):
     '''component : text
