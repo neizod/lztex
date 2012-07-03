@@ -1,0 +1,19 @@
+document : <empty>
+         | document paragraph
+         | document <newline>
+
+paragraph : header
+          | content
+
+header : line <newline> underline <newline>?
+
+content : line
+        | content line
+        ? content <newline>
+
+line : component
+     | line component 
+
+component : <text>
+          | <quote>
+          | <etc>

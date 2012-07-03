@@ -310,7 +310,7 @@ def t_QUOTE(t):
     return t
 
 def t_UNDERLINE(t):
-    r'\n(-|=)+\n'
+    r'\n(-|=)+'
     return t
 
 
@@ -500,17 +500,7 @@ lexer = lex.lex()
 def p_document(t):
     '''document : paragraph'''
     document = r'\documentclass{article}' + '\n'
-    prerequisite = ''
-    if flag.amsmath:
-        prerequisite += r'\usepackage{amsmath}' + '\n'
-    if flag.lztex_logo:
-        # FIXME make use of its own class
-        prerequisite += r'\usepackage{relsize}' + '\n'
-        prerequisite += r'\newcommand{\LzTeX}{L\kern-.31em\lower-.47ex\hbox{\smaller{\smaller{Z}}}\kern-.09emT\kern-.16em\lower+.51ex\hbox{E}\kern-.27exX}' + '\n'
-    if flag.ezmath_logo:
-        # FIXME make use of its own class
-        prerequisite += r'\usepackage{graphicx}' + '\n'
-        prerequisite += r'\newcommand{\EzMath}{\(\mathcal{E}\)\kern-.18em\lower+.51ex\hbox{\(\mathcal{Z}\)}\kern-.18em\(\mathcal{M}\)\kern-.12em\lower-.51ex\hbox{\scalebox{0.6}{\(\mathcal{ATH}\)}}}' + '\n'
+    prerequisite = flag.make_prerequisite()
     if prerequisite != '':
         document = ''.join([document, prerequisite])
     document_body = '\n'.join([r'\begin{document}', t[1], r'\end{document}'])
@@ -537,7 +527,8 @@ def p_paragraph(t):
 
 def p_sub_para(t):
     '''sub_para : component
-                | component UNDERLINE'''
+                | NEWLINE
+                | component UNDERLINE NEWLINE'''
     try:
         t[2]
         t[0] = r'\header??{' + t[1] + r'}'    # TODO
@@ -550,7 +541,6 @@ def p_component(t):
                  | WHITESPACE
                  | QUOTE
                  | EMPHASIS
-                 | NEWLINE
                  | ezmath'''
     t[0] = t[1]
 
@@ -792,6 +782,18 @@ class ParserFlag:
         self.amsmath = False
         self.lztex_logo = False
         self.ezmath_logo = False
+
+    def make_prerequisite(self):
+        prerequisite = ''
+        if self.amsmath:
+            prerequisite += r'\usepackage{amsmath}' + '\n'
+        if self.lztex_logo:
+            prerequisite += r'\usepackage{relsize}' + '\n'
+            prerequisite += r'\newcommand{\LzTeX}{L\kern-.31em\lower-.47ex\hbox{\smaller{\smaller{Z}}}\kern-.09emT\kern-.16em\lower+.51ex\hbox{E}\kern-.27exX}' + '\n'
+        if self.ezmath_logo:
+            prerequisite += r'\usepackage{graphicx}' + '\n'
+            prerequisite += r'\newcommand{\EzMath}{\(\mathcal{E}\)\kern-.18em\lower+.51ex\hbox{\(\mathcal{Z}\)}\kern-.18em\(\mathcal{M}\)\kern-.12em\lower-.51ex\hbox{\scalebox{0.6}{\(\mathcal{ATH}\)}}}' + '\n'
+        return prerequisite
 
 
 # FIXME quick hack for build-in help.
