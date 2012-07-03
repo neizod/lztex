@@ -216,6 +216,7 @@ tokens = (
         'WHITESPACE',
         'QUOTE',
         'CODE',
+        'LINK',
         'UNDERLINE',
         'NEWLINE',
         
@@ -316,6 +317,13 @@ def t_CODE(t):
     t.value = r'\texttt{{{code}}}'.format(code=t.value.strip('`').strip())
     return t
 
+def t_LINK(t):
+    r'<[^ >]+?@[^ >]+?>|<[^ >]+?://[^ >]+?>'
+    if '@' in t.value:
+        t.value = r'\href{{mailto:{name}}}{{\texttt{{<{name}>}}}}'.format(name=t.value[1:-1])
+    else:
+        t.value = r'\url{{{name}}}'.format(name=t.value[1:-1])
+    return t
 
 def t_UNDERLINE(t):
     r'\n(-|=)+'
@@ -575,6 +583,7 @@ def p_component(t):
                  | WHITESPACE
                  | QUOTE
                  | CODE
+                 | LINK
                  | NEWLINE
                  | EMPHASIS
                  | ezmath'''
@@ -843,7 +852,7 @@ def main():
     args = get_shell_args()
 
     welcome_message = '''
-    LzTeX beta preview (nightly build: Wed, 27 Jun 2012 19:33:02 +0700)
+    LzTeX beta preview (nightly build: Wed, 04 Jul 2012 00:09:21 +0700)
       Quick Docs: Type a document in LzTeX format when prompt.
       On empty line hit ^D to see result, and hit ^D again to quit.
     '''.strip().replace('    ', '')
