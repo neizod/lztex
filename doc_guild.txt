@@ -1,6 +1,8 @@
-document : <empty>
-         | document paragraph
-         | document <newline>
+document : section
+
+section : <empty>
+        | section paragraph
+        | section <newline>
 
 paragraph : header
           | content

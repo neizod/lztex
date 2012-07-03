@@ -208,12 +208,14 @@ sort_len = lambda x: -len(x)
 repeat_num = lambda a: a[0] + r'\overline{' + a[1] + '}'
 rm_parentheses = lambda t: t[6:-7] if t[:6] == r'\left(' and t[-7:] == r'\right)' else t
 
+
 ###############################################################################
 
 tokens = (
         'CHARACTER',
         'WHITESPACE',
         'QUOTE',
+        'CODE',
         'UNDERLINE',
         'NEWLINE',
         
@@ -308,6 +310,12 @@ def t_QUOTE(t):
         t.value = "'" if t.value == "'" else "''"
         t.lexer.begin_quote = True
     return t
+
+def t_CODE(t):
+    r'(?P<star>`+).*?(?P=star)'
+    t.value = r'\texttt{{{code}}}'.format(code=t.value.strip('`').strip())
+    return t
+
 
 def t_UNDERLINE(t):
     r'\n(-|=)+'
@@ -502,7 +510,7 @@ lexer = lex.lex()
 ###############################################################################
 
 def p_document(t):
-    '''document : paragraph'''
+    '''document : section'''
     document = r'\documentclass{article}' + '\n'
     prerequisite = flag.make_prerequisite()
     if prerequisite != '':
@@ -511,30 +519,53 @@ def p_document(t):
     t[0] = ''.join([document, document_body])
     # TODO push \n after: \documentclass, \usepackage, \begin, \end --
     #   AFTER remove interactive class when runnig prog
-    # TODO include only needed package by checking math_flag
 
     # finale output.
     print(t[0])
 
-
-def p_paragraph(t):
-    '''paragraph :
-                 | paragraph sub_para'''
+def p_section(t):
+    '''section :
+               | section block'''
     try:
         t[0] = t[1] + t[2]
     except:
         t[0] = ''
+    
+def p_block(t):
+    '''block : header
+             | content'''
+             #| blockquote
+    t[0] = t[1]
 
-#   def p_lztex(t):
-#       '''lztex :
-#                | lztex component'''
-
-def p_sub_para(t):
-    '''sub_para : component
-                | NEWLINE
-                | component UNDERLINE NEWLINE'''
+def p_header(t):
+    '''header : line UNDERLINE NEWLINE'''
     try:
-        t[0] = r'\{head}{{{body}}}'.format(head=t[2], body=t[1])
+        t[0] = r'\{head}{{{body}}}'.format(head=t[2], body=t[1]) + '\n'
+    except:
+        t[0] = t[1]
+
+# TODO
+def p_blockquote(t):
+    '''blockquote : line
+                  | blockquote line'''
+    try:
+        t[0] = t[1] + t[2]
+    except:
+        t[0] = t[1]
+
+def p_content(t):
+    '''content : line
+               | content line'''
+    try:
+        t[0] = t[1] + t[2]
+    except:
+        t[0] = t[1]
+
+def p_line(t):
+    '''line : component
+            | line component'''
+    try:
+        t[0] = t[1] + t[2]
     except:
         t[0] = t[1]
 
@@ -543,8 +574,11 @@ def p_component(t):
                  | SYMBOL
                  | WHITESPACE
                  | QUOTE
+                 | CODE
+                 | NEWLINE
                  | EMPHASIS
                  | ezmath'''
+    # FIXME move newline token to somewhere else
     t[0] = t[1]
 
 def p_text(t):
@@ -830,12 +864,12 @@ def main():
                     try:
                         s += '\n'
                         s += input('... ')
-                    except EOFError:
+                    except (EOFError, KeyboardInterrupt):
                         print('')
                         lexer.begin_quote = True
                         yacc.parse(s)
                         break
-        except EOFError:
+        except (EOFError, KeyboardInterrupt):
             print('')
             exit('bye ^^)/')
 
