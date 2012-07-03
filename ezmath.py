@@ -311,6 +311,10 @@ def t_QUOTE(t):
 
 def t_UNDERLINE(t):
     r'\n(-|=)+'
+    if t.value[1] == r'=':
+        t.value = 'section'
+    else:
+        t.value = 'subsection'
     return t
 
 
@@ -530,8 +534,7 @@ def p_sub_para(t):
                 | NEWLINE
                 | component UNDERLINE NEWLINE'''
     try:
-        t[2]
-        t[0] = r'\header??{' + t[1] + r'}'    # TODO
+        t[0] = r'\{head}{{{body}}}'.format(head=t[2], body=t[1])
     except:
         t[0] = t[1]
 
