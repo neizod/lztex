@@ -1,3 +1,6 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+
 # FIXME
 # - check why slash something (e.g. \abcdefg) doesn't raise a parser error,
 #   but pass silently (and seems to work?).
@@ -224,6 +227,7 @@ tokens = (
         'WHITESPACE',
         'QUOTE',
         'CODE',
+        'IPA',
         'LINK',
         'UNDERLINE',
         'NEWLINE',
@@ -324,11 +328,29 @@ def t_QUOTE(t):
 
 def t_CODE(t):
     r'(?P<star>`+).*?(?P=star)'
-    t.value = r'\texttt{{{code}}}'.format(code=t.value.strip('`').strip())
+    # FIXME use regex sub instead
+    t.value = r'\texttt{{{code}}}'.format(code=t.value.strip('`').strip().\
+            replace('\\', r'\char`\\').\
+            replace('`', r'\`{}').\
+            replace('^', r'\^{}').\
+            replace('$', r'\$').\
+            replace(r'\char\`{}\\', r'\char`\\'))
+    return t
+
+def t_IPA(t):
+    r'/.*/'
+    flag.tipa = True
+    # TODO parse to full IPA
+    t.value = t.value.\
+            replace("ˈ", '"').\
+            replace('ɪ', 'I').\
+            replace('ɛ', '@')
+    t.value = r'\textipa{{{word}}}'.format(word=t.value)
     return t
 
 def t_LINK(t):
     r'<[^ >]+?@[^ >]+?>|<[^ >]+?://[^ >]+?>'
+    flag.hyperref = True
     if '@' in t.value:
         t.value = r'\href{{mailto:{name}}}{{\texttt{{<{name}>}}}}'.format(name=t.value[1:-1])
     else:
@@ -336,7 +358,7 @@ def t_LINK(t):
     return t
 
 def t_UNDERLINE(t):
-    r'\n(-|=)+'
+    r'\n(-|=)+\n'
     if t.value[1] == r'=':
         t.value = 'section'
     else:
@@ -367,6 +389,10 @@ def t_ESCAPE(t):
     t.lexer.begin_quote = False
     if t.value == r'\n':
         t.value = r'\newline'
+    elif t.value == r'\`':
+        t.value = r'\`{}'
+    elif t.value == r'\\':
+        t.value = r'\textbackslash'
     else:
         t.value = t.value[-1]
     return t
@@ -514,7 +540,7 @@ def t_ezmath_matrix_ENGLISH(t):
     return t
 
 def t_ezmath_matrix_NUMBER(t):
-    r'[0-9]+\.[0-9]*(...)[0-9](...)|[0-9]+(\.[0-9]+(...)?)?'
+    r'[0-9]+\.[0-9]*(...)[0-9]+(...)|[0-9]+(\.[0-9]+(...)?)?'
     t.lexer.begin('ezmath')
     if t.value.count('.') == 7:
         t.value = repeat_num(t.value.rsplit('...'))
@@ -541,19 +567,25 @@ lexer = lex.lex()
 ###############################################################################
 
 def p_document(t):
-    '''document : section'''
+    '''document : title section'''
     document = r'\documentclass{article}' + '\n'
+
     prerequisite = flag.make_prerequisite()
     if prerequisite != '':
         document = ''.join([document, prerequisite])
-    document_body = '\n'.join([r'\begin{document}', t[1], r'\end{document}'])
-    t[0] = ''.join([document, document_body])
-    # TODO push \n after: \documentclass, \usepackage, \begin, \end --
-    #   AFTER remove interactive class when runnig prog
+
+    body = '\n'.join([t[1], r'\begin{document}', r'\maketitle', t[2], r'\end{document}'])
+
+    t[0] = ''.join([document, body])
 
     # finale output.
-    # print(t[0])
     return t[0]
+
+def p_title(t):
+    '''title : line UNDERLINE line'''
+    t[1] = r'\title{{{title}}}'.format(title=t[1])
+    t[3] = r'\author{{{name}}}'.format(name=t[3])
+    t[0] = '\n'.join([t[1], t[3]])
 
 def p_section(t):
     '''section :
@@ -565,12 +597,13 @@ def p_section(t):
     
 def p_block(t):
     '''block : header
-             | content'''
+             | content
+             | NEWLINE'''
              #| blockquote
     t[0] = t[1]
 
 def p_header(t):
-    '''header : line UNDERLINE NEWLINE'''
+    '''header : line UNDERLINE'''
     try:
         t[0] = r'\{head}{{{body}}}'.format(head=t[2], body=t[1]) + '\n'
     except:
@@ -586,8 +619,8 @@ def p_blockquote(t):
         t[0] = t[1]
 
 def p_content(t):
-    '''content : line
-               | content line'''
+    '''content : line'''
+               #| content NEWLINE'''
     try:
         t[0] = t[1] + t[2]
     except:
@@ -607,12 +640,11 @@ def p_component(t):
                  | WHITESPACE
                  | QUOTE
                  | CODE
+                 | IPA
                  | LINK
-                 | NEWLINE
                  | ESCAPE
                  | EMPHASIS
                  | ezmath'''
-    # FIXME move newline token to somewhere else
     t[0] = t[1]
 
 def p_text(t):
@@ -622,6 +654,7 @@ def p_text(t):
         t[0] = t[1] + t[2]
     except:
         t[0] = t[1]
+
 
 def p_ezmath(t):
     '''ezmath : BEGIN_EZMATH sentence END_EZMATH'''
@@ -742,16 +775,16 @@ def p_summation_boundary(t):
         t[2] = rm_parentheses(t[2])
         t[4] = rm_parentheses(t[4])
         t[6] = rm_parentheses(t[6])
-        t[0] = r'_{' + t[2] + '=' + t[4] + r'}^{' + t[6] + r'}'
+        t[0] = r'\limits_{' + t[2] + '=' + t[4] + r'}^{' + t[6] + r'}'
     except:
         try:
             if t[1] == 'for':
                 sep = ' ' if t[4][0].isalpha() else ''
-                t[0] = r'_{' + t[2] + r'\to' + sep + t[4] + r'}'
+                t[0] = r'\limits_{' + t[2] + r'\to' + sep + t[4] + r'}'
             else:
-                t[0] = r'_{' + t[2] + r'}^{' + t[4] + r'}'
+                t[0] = r'\limits_{' + t[2] + r'}^{' + t[4] + r'}'
         except:
-            t[0] = r'_{' + t[2] + r'}'
+            t[0] = r'\limits_{' + t[2] + r'}'
 
 def p_parentheses(t):
     '''parentheses : OP sentence CP'''
@@ -760,22 +793,23 @@ def p_parentheses(t):
 def p_function(t):
     '''function : FUNCTION parentheses'''
     t[2] = rm_parentheses(t[2])
+    sep = ' ' if t[2][0].isalpha() else ''
     if t[1] == r'abs':
         t[0] = r'\left|{body}\right|'.format(body=t[2])
     elif t[1] == r'norm':
         t[0] = r'\left\|{body}\right\|'.format(body=t[2])
     elif t[1] == r'bra':
-        t[0] = r'\left\langle{body}\right|'.format(body=t[2])
+        t[0] = r'\left\langle{body}\right|'.format(body=sep+t[2])
     elif t[1] == r'ket':
         t[0] = r'\left|{body}\right\rangle'.format(body=t[2])
     elif t[1] == r'braket' or t[1] == r'inner':
-        t[0] = r'\left\langle{body}\right\rangle'.format(body=t[2])
+        t[0] = r'\left\langle{body}\right\rangle'.format(body=sep+t[2])
     elif t[1] == r'floor':
-        t[0] = r'\left\lfloor{body}\right\rfloor'.format(body=t[2])
+        t[0] = r'\left\lfloor{body}\right\rfloor'.format(body=sep+t[2])
     elif t[1] == r'ceil':
-        t[0] = r'\left\lceil{body}\right\rceil'.format(body=t[2])
+        t[0] = r'\left\lceil{body}\right\rceil'.format(body=sep+t[2])
     elif t[1] == r'round':
-        t[0] = r'\left\lfloor{body}\right\rceil'.format(body=t[2])
+        t[0] = r'\left\lfloor{body}\right\rceil'.format(body=sep+t[2])
     elif t[1] == r'list':
         t[0] = r'\left\[{body}\right\]'.format(body=t[2])
     else:
@@ -832,8 +866,8 @@ def p_error(t):
 
 
 import ply.yacc as yacc
-yacc.yacc(debug=0)  # for release version.
-# yacc.yacc()
+# yacc.yacc(debug=0)  # for release version.
+yacc.yacc()
 
 
 ###############################################################################
@@ -841,13 +875,19 @@ yacc.yacc(debug=0)  # for release version.
 def py2_handler():
     # FIXME simple input handler for python2
     try:
+        global input
         input = raw_input
     except:
         pass
 
 class ParserFlag:
     def __init__(self):
+        # package
         self.amsmath = False
+        self.hyperref = False
+        self.tipa = False
+
+        # command
         self.lztex_logo = False
         self.ezmath_logo = False
 
@@ -855,6 +895,10 @@ class ParserFlag:
         prerequisite = ''
         if self.amsmath:
             prerequisite += r'\usepackage{amsmath}' + '\n'
+        if self.tipa:
+            prerequisite += r'\usepackage{tipa}' + '\n'
+        if self.hyperref:
+            prerequisite += r'\usepackage{hyperref}' + '\n'
         if self.lztex_logo:
             prerequisite += r'\usepackage{relsize}' + '\n'
             prerequisite += r'\newcommand{\LzTeX}{L\kern-.31em\lower-.47ex\hbox{\smaller{\smaller{Z}}}\kern-.09emT\kern-.16em\lower+.51ex\hbox{E}\kern-.27exX}' + '\n'
@@ -876,7 +920,7 @@ def main():
     global flag
     if not args.files:
         welcome_message = '''
-        LzTeX beta preview (nightly build: Thu, 05 Jul 2012 16:40:13 +0700)
+        LzTeX beta preview (nightly build: Thu, 05 Jul 2012 23:51:46 +0700)
           Quick Docs: Type a document in LzTeX format when prompt.
           On empty line hit ^D to see result, and hit ^D again to quit.
         '''.strip().replace('    ', '')
@@ -890,7 +934,7 @@ def main():
                 if s == r'\h':
                     help(LzTeX)
                 elif s == r'\q':
-                    raise(EOFError)
+                    raise EOFError
                 else:
                     while True:
                         try:
@@ -924,10 +968,4 @@ def main():
 if __name__ == '__main__':
     py2_handler()
     main()
-
-
-
-
-
-
 
