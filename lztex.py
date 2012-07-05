@@ -25,6 +25,13 @@ def get_shell_args():
 from ply.lex import TOKEN
 from re import escape
 
+logo = { r'TeX':      r'\TeX{}',
+         r'LaTeX':    r'\LaTeX{}',
+         r'LaTeX2e':  r'\LaTeXe{}',
+         r'AmS':      r'\AmS{}',
+         r'LzTeX':    r'\LzTeX{}',
+         r'EzMath':   r'\EzMath{}', }
+
 symbol = { r'+':    r'+',
            r'-':    r'-',
            r'*':    r'\times',
@@ -212,6 +219,7 @@ rm_parentheses = lambda t: t[6:-7] if t[:6] == r'\left(' and t[-7:] == r'\right)
 ###############################################################################
 
 tokens = (
+        'LOGO',
         'CHARACTER',
         'WHITESPACE',
         'QUOTE',
@@ -270,14 +278,15 @@ precedence = (
 
 ###############################################################################
 
-def t_SYMBOL(t):   # TODO rename this not to make confuse with ezmath envoroinment.
-    r'LzTeX|EzMath'
+@TOKEN(r'|'.join(w for w in sorted(logo, key=sort_len)))
+def t_LOGO(t):
     if t.value == 'LzTeX':
-        t.value = r'\LzTeX{}'
         flag.lztex_logo = True
     elif t.value == 'EzMath':
-        t.value = r'\EzMath{}'
         flag.ezmath_logo = True
+    elif t.value == 'AmS':
+        flag.amsmath = True
+    t.value = logo[t.value]
     t.lexer.begin_quote = False
     return t
 
@@ -354,9 +363,12 @@ def t_NEWLINE(t):
 
 def t_ESCAPE(t):
     r'\\.'
-    # TODO check if \n, \t, \somthing that need to convert as escape char.
+    # TODO check if \n, \t, \somthing that need to be convert as escape char.
     t.lexer.begin_quote = False
-    t.value = t.value[-1]
+    if t.value == r'\n':
+        t.value = r'\newline'
+    else:
+        t.value = t.value[-1]
     return t
 
 def t_CHARACTER(t):
@@ -540,7 +552,8 @@ def p_document(t):
     #   AFTER remove interactive class when runnig prog
 
     # finale output.
-    print(t[0])
+    # print(t[0])
+    return t[0]
 
 def p_section(t):
     '''section :
@@ -590,7 +603,7 @@ def p_line(t):
 
 def p_component(t):
     '''component : text
-                 | SYMBOL
+                 | LOGO
                  | WHITESPACE
                  | QUOTE
                  | CODE
@@ -693,10 +706,6 @@ def p_matrix_statement(t):
             t[0] = t[1] + t[2]
     except:
         t[0] = t[1]
-
-    # simple debug.
-    print('... {0}'.format(t[0]))
-    # FIXME remove 0 inside {} due to make compatible w/ python27 and py3k only.
 
 def p_matrix_expression(t):
     '''matrix_expression : element
@@ -823,7 +832,8 @@ def p_error(t):
 
 
 import ply.yacc as yacc
-yacc.yacc()
+yacc.yacc(debug=0)  # for release version.
+# yacc.yacc()
 
 
 ###############################################################################
@@ -866,7 +876,7 @@ def main():
     global flag
     if not args.files:
         welcome_message = '''
-        LzTeX beta preview (nightly build: Wed, 04 Jul 2012 00:09:21 +0700)
+        LzTeX beta preview (nightly build: Thu, 05 Jul 2012 16:40:13 +0700)
           Quick Docs: Type a document in LzTeX format when prompt.
           On empty line hit ^D to see result, and hit ^D again to quit.
         '''.strip().replace('    ', '')
@@ -889,17 +899,27 @@ def main():
                         except (EOFError, KeyboardInterrupt):
                             print('')
                             lexer.begin_quote = True
-                            yacc.parse(s)
+                            output = yacc.parse(s)
+                            print(output)
                             break
             except (EOFError, KeyboardInterrupt):
                 print('')
                 exit('bye ^^)/')
     else:
-        for file in args.files:
+        import os
+        for in_file in args.files:
             flag = ParserFlag()
-
             lexer.begin_quote = True
-            yacc.parse(file.read())
+            output = yacc.parse(in_file.read())
+
+            file_name, file_ext = os.path.splitext(in_file.name)
+
+            # TODO check if .tex file already exists before overwrite it!
+            out_file = open(file_name + '.tex', 'w')
+            out_file.write(output)
+
+            in_file.close()
+            out_file.close()
 
 if __name__ == '__main__':
     py2_handler()
