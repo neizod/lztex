@@ -920,7 +920,7 @@ def main():
     global flag
     if not args.files:
         welcome_message = '''
-        LzTeX beta preview (nightly build: Thu, 05 Jul 2012 23:51:46 +0700)
+        LzTeX beta preview (nightly build: Fri, 06 Jul 2012 00:16:39 +0700)
           Quick Docs: Type a document in LzTeX format when prompt.
           On empty line hit ^D to see result, and hit ^D again to quit.
         '''.strip().replace('    ', '')
