@@ -219,6 +219,7 @@ tokens = (
         'LINK',
         'UNDERLINE',
         'NEWLINE',
+        'ESCAPE',
         
         'EMPHASIS',
 
@@ -351,10 +352,20 @@ def t_NEWLINE(t):
     t.lexer.begin_quote = True
     return t
 
+def t_ESCAPE(t):
+    r'\\.'
+    # TODO check if \n, \t, \somthing that need to convert as escape char.
+    t.lexer.begin_quote = False
+    t.value = t.value[-1]
+    return t
+
 def t_CHARACTER(t):
     r'.'
     #r'[a-zA-Z0-9]'
-    t.lexer.begin_quote = False
+    if t.value in '([{':
+        t.lexer.begin_quote = True
+    else:
+        t.lexer.begin_quote = False
     return t
 
 
@@ -585,6 +596,7 @@ def p_component(t):
                  | CODE
                  | LINK
                  | NEWLINE
+                 | ESCAPE
                  | EMPHASIS
                  | ezmath'''
     # FIXME move newline token to somewhere else
@@ -602,6 +614,7 @@ def p_ezmath(t):
     '''ezmath : BEGIN_EZMATH sentence END_EZMATH'''
     if t[1][0] == '\n' and t[3][-1] == '\n':
         t[0] = r'\[{body}\]'.format(body=t[2])
+        t[0] = '\n' + t[0] + '\n'
     else:
         t[0] = r'\({body}\)'.format(body=t[2])
 
@@ -631,9 +644,8 @@ def p_statement(t):
     except:
         t[0] = t[1]
 
-    # simple debug.
-    print('... {0}'.format(t[0]))
-    # FIXME remove 0 inside {} due to make compatible w/ python27 and py3k only.
+    # simple debug inside math.
+    # print('... {0}'.format(t[0]))
 
 def p_expression(t):
     '''expression : element
@@ -851,36 +863,43 @@ def LzTeX():
 def main():
     args = get_shell_args()
 
-    welcome_message = '''
-    LzTeX beta preview (nightly build: Wed, 04 Jul 2012 00:09:21 +0700)
-      Quick Docs: Type a document in LzTeX format when prompt.
-      On empty line hit ^D to see result, and hit ^D again to quit.
-    '''.strip().replace('    ', '')
-    print(welcome_message)
-    while True:
-        global flag
-        flag = ParserFlag()
-        try:
-            s = input('>>> ')
+    global flag
+    if not args.files:
+        welcome_message = '''
+        LzTeX beta preview (nightly build: Wed, 04 Jul 2012 00:09:21 +0700)
+          Quick Docs: Type a document in LzTeX format when prompt.
+          On empty line hit ^D to see result, and hit ^D again to quit.
+        '''.strip().replace('    ', '')
+        print(welcome_message)
+        while True:
+            flag = ParserFlag()
+            try:
+                s = input('>>> ')
 
-            # FIXME quick hack for invoke intepreter help command.
-            if s == r'\h':
-                help(LzTeX)
-            elif s == r'\q':
-                raise(EOFError)
-            else:
-                while True:
-                    try:
-                        s += '\n'
-                        s += input('... ')
-                    except (EOFError, KeyboardInterrupt):
-                        print('')
-                        lexer.begin_quote = True
-                        yacc.parse(s)
-                        break
-        except (EOFError, KeyboardInterrupt):
-            print('')
-            exit('bye ^^)/')
+                # FIXME quick hack for invoke intepreter help command.
+                if s == r'\h':
+                    help(LzTeX)
+                elif s == r'\q':
+                    raise(EOFError)
+                else:
+                    while True:
+                        try:
+                            s += '\n'
+                            s += input('... ')
+                        except (EOFError, KeyboardInterrupt):
+                            print('')
+                            lexer.begin_quote = True
+                            yacc.parse(s)
+                            break
+            except (EOFError, KeyboardInterrupt):
+                print('')
+                exit('bye ^^)/')
+    else:
+        for file in args.files:
+            flag = ParserFlag()
+
+            lexer.begin_quote = True
+            yacc.parse(file.read())
 
 if __name__ == '__main__':
     py2_handler()
