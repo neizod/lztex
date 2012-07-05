@@ -60,7 +60,7 @@ $ L = - 1/(16pi) (der^mu A^nu - der^nu A^mu)(der[mu] A[v] - der[nu] A[mu]) + (m^
 
 - Matrix must be wrap by `[ ... ]` such as `[1,2;3,4]` is $[1,2;3,4]$. Make sure there is some space before it, otherwise it will parse as indexing.
 
-- Intregral with keyword `integral`, then end with the integral boundary, such as `integral x^2 from 0 to 10`, this will be render as $integral x^2 from 0 to 10$.
+- Intregral with keyword `integral`, then end with the integral boundary, such as `integral x^2 dx from 0 to 10`, this will be render as $integral x^2 dx from 0 to 10$.
 
 - Not Yet Avaliable: function name (sin cos tan), procedure (if else while).
 
