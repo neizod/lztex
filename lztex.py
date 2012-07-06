@@ -229,10 +229,10 @@ tokens = (
         'CODE',
         'IPA',
         'LINK',
+        'ITEM',
         'UNDERLINE',
         'NEWLINE',
         'ESCAPE',
-        
         'EMPHASIS',
 
 
@@ -355,6 +355,11 @@ def t_LINK(t):
         t.value = r'\href{{mailto:{name}}}{{\texttt{{<{name}>}}}}'.format(name=t.value[1:-1])
     else:
         t.value = r'\url{{{name}}}'.format(name=t.value[1:-1])
+    return t
+
+def t_ITEM(t):
+    r'\n(-|\+|\*)[ \t]+'
+    t.lexer.begin_quote = True
     return t
 
 def t_UNDERLINE(t):
@@ -598,6 +603,7 @@ def p_section(t):
 def p_block(t):
     '''block : header
              | content
+             | itemize
              | NEWLINE'''
              #| blockquote
     t[0] = t[1]
@@ -617,6 +623,23 @@ def p_blockquote(t):
         t[0] = t[1] + t[2]
     except:
         t[0] = t[1]
+
+def p_itemize(t):
+    '''itemize : item_list'''
+    t[0] = '\n'.join([r'\begin{itemize}', t[1], r'\end{itemize}'])
+
+def p_item_list(t):
+    '''item_list : item_each
+                 | item_list item_each'''
+    try:
+        t[0] = '\n'.join([t[1], t[2]])
+    except:
+        t[0] = t[1]
+
+def p_item_each(t):
+    '''item_each : ITEM line'''
+    t[0] = r'\item ' + t[2]
+
 
 def p_content(t):
     '''content : line'''
@@ -920,7 +943,7 @@ def main():
     global flag
     if not args.files:
         welcome_message = '''
-        LzTeX beta preview (nightly build: Fri, 06 Jul 2012 00:16:39 +0700)
+        LzTeX beta preview (nightly build: Fri, 06 Jul 2012 22:27:14 +0700)
           Quick Docs: Type a document in LzTeX format when prompt.
           On empty line hit ^D to see result, and hit ^D again to quit.
         '''.strip().replace('    ', '')

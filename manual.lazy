@@ -29,18 +29,13 @@ LaTeX document **must** start with article name, follow by the underline, and en
 ``` ```
 
 - To underline a line of text. Make 1 newline, write down `====` or `----` as much as you want, and finally end it with another 1 newline.
-
 - 1 newline won't do a newline in a rendered document. Use 2 newline for a new paragraph (there is no option for just newline yet).
-
 - Use `* ... *` (with number of star from 1 to 3) to wrap some text, it will appear as emphasis text.
-
 - Use `` ` ... ` `` for code. If you want \` inside it, just increase the number of opening and closing \`, like ``` `` ` `` ```.
-
 - For autolink, wrap url\/e-mail with `<...>`.
-
 - To spell some word, wrap the phonetic alphabets inside `/.../`, like /ˈleɪzitɛk/ (this feature is not yet fully support).
-
-- Not Yet Avaliable: multiline code, blockquote, (properly) list, horizontal rule, page break.
+- Itemize with symbol `-` at the begin of the line, follow by some space, and then the item.
+- Not Yet Avaliable: multiline code, blockquote, horizontal rule, page break.
 
 
 Mathematics
@@ -51,17 +46,11 @@ To use EzMath, wrap mathematics sentence inside `$ ... $`, you may put newline b
 $ L = - 1/(16pi) (der^mu A^nu - der^nu A^mu)(der[mu] A[v] - der[nu] A[mu]) + (m^2c^2)/(8pi hbar^2) A^nu A[nu] $
 
 - Any symbol to our sense will be parse to it, `*` is $*$. If you need `*` in math, escape them like `\*` to produce $\*$.
-
 - Indexing some element like `phi[1]` to produce $phi[1]$. And Power it like `e^pi` to produce $e^pi$.
-
 - Fraction with `up/down`. If there is a complex part, parenthesize them, such as `(alpha+beta+gamma)/(A+B+C)` is $(alpha+beta+gamma)/(A+B+C)$.
-
 - There is some function-bracket call, like `floor(2....428571...)` will be shown as $floor(2....428571...)$, check out for all function names in the source!
-
 - Matrix must be wrap by `[ ... ]` such as `[1,2;3,4]` is $[1,2;3,4]$. Make sure there is some space before it, otherwise it will parse as indexing.
-
 - Intregral with keyword `integral`, then end with the integral boundary, such as `integral x^2 dx from 0 to 10`, this will be render as $integral x^2 dx from 0 to 10$.
-
 - Not Yet Avaliable: function name (sin cos tan), procedure (if else while).
 
 
@@ -71,7 +60,6 @@ Using `lztex.py`
 To fully use the program, you need
 
 - Python 2.7 or Python 3.2 (or higher)
-
 - Program that can make PDF from tex file (texlive, miktex)
 
 Then, inside the program's directory, invoke program with
