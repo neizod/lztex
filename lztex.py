@@ -19,7 +19,7 @@ def get_shell_args():
 ###############################################################################
 
 from ply.lex import TOKEN
-from re import escape
+from re import escape, sub
 
 logo = { r'TeX':      r'\TeX{}',
          r'LaTeX':    r'\LaTeX{}',
@@ -211,6 +211,19 @@ sort_len = lambda x: -len(x)
 repeat_num = lambda a: a[0] + r'\overline{' + a[1] + '}'
 rm_parentheses = lambda t: t[6:-7] if t[:6] == r'\left(' and t[-7:] == r'\right)' else t
 
+def escape_latex(matched_char):
+    c = matched_char.group()
+    if c in '#$%&_{}':
+        return '\\{char}'.format(char=c)
+    elif c in '[]<>|':
+        return '{{{char}}}'.format(char=c)
+    else:
+        d = { '^':  '^',
+              '`':  '`',
+              '~':  'textasciitilde',
+              '\\': 'textbackslash', }
+        return '\\{char}{{}}'.format(char=d[c])
+
 
 ###############################################################################
 
@@ -323,19 +336,16 @@ def t_QUOTE(t):
 
 def t_BLOCKCODE(t):
     r'(?<=\n)(?P<star>`+)\n(.*?\n)*?(?P=star)(?=\n)'
-    code = t.value.strip().strip('`')
+    code = t.value.strip('`')
     t.value = r'\begin{{verbatim}}{code}\end{{verbatim}}'.format(code=code)
     return t
 
 def t_CODE(t):
     r'(?P<star>`+).*?(?P=star)'
-    # FIXME use regex sub instead
-    t.value = r'\texttt{{{code}}}'.format(code=t.value.strip('`').strip().\
-            replace('\\', r'\char`\\').\
-            replace('`', r'\`{}').\
-            replace('^', r'\^{}').\
-            replace('$', r'\$').\
-            replace(r'\char\`{}\\', r'\char`\\'))
+    pattern = r'|'.join(escape(w) for w in r'\#$%&`_{}[]^~<>|')
+    code = t.value.strip('`').strip()
+    code = sub(pattern, escape_latex, code)
+    t.value = r'\texttt{{{code}}}'.format(code=code)
     return t
 
 
@@ -920,6 +930,10 @@ class ParserFlag:
 
     def make_prerequisite(self):
         prerequisite = ''
+        prerequisite += r'\usepackage[T1]{fontenc}' + '\n'
+        prerequisite += r'\usepackage{lmodern}' + '\n'
+        # prerequisite += r'\usepackage{upquote}' + '\n'
+
         if self.amsmath:
             prerequisite += r'\usepackage{amsmath}' + '\n'
         if self.tipa:
@@ -947,7 +961,7 @@ def main():
     global flag
     if not args.files:
         welcome_message = '''
-        LzTeX beta preview (nightly build: Wed, 18 Jul 2012 20:53:31 +0700)
+        LzTeX beta preview (nightly build: Thu, 19 Jul 2012 01:29:49 +0700)
           Quick Docs: Type a document in LzTeX format when prompt.
           On empty line hit ^D to see result, and hit ^D again to quit.
         '''.strip().replace('    ', '')
