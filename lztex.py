@@ -1,13 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-# FIXME
-# - check why slash something (e.g. \abcdefg) doesn't raise a parser error,
-#   but pass silently (and seems to work?).
-# - in ezmath's text, why regex fail for open group?
-# - newline?
-# - positioning a[1][2][3] -> _{2}^{3}a_{1}
-
 import argparse
 
 def get_shell_args():
@@ -227,6 +220,7 @@ tokens = (
         'WHITESPACE',
         'QUOTE',
         'CODE',
+        'BLOCKCODE',
         'IPA',
         'LINK',
         'ITEM',
@@ -326,6 +320,13 @@ def t_QUOTE(t):
         t.lexer.begin_quote = True
     return t
 
+
+def t_BLOCKCODE(t):
+    r'(?<=\n)(?P<star>`+)\n(.*?\n)*?(?P=star)(?=\n)'
+    code = t.value.strip().strip('`')
+    t.value = r'\begin{{verbatim}}{code}\end{{verbatim}}'.format(code=code)
+    return t
+
 def t_CODE(t):
     r'(?P<star>`+).*?(?P=star)'
     # FIXME use regex sub instead
@@ -336,6 +337,7 @@ def t_CODE(t):
             replace('$', r'\$').\
             replace(r'\char\`{}\\', r'\char`\\'))
     return t
+
 
 def t_IPA(t):
     r'/.*/'
@@ -604,6 +606,7 @@ def p_block(t):
     '''block : header
              | content
              | itemize
+             | BLOCKCODE
              | NEWLINE'''
              #| blockquote
     t[0] = t[1]
@@ -944,7 +947,7 @@ def main():
     global flag
     if not args.files:
         welcome_message = '''
-        LzTeX beta preview (nightly build: Fri, 06 Jul 2012 22:46:15 +0700)
+        LzTeX beta preview (nightly build: Wed, 18 Jul 2012 20:53:31 +0700)
           Quick Docs: Type a document in LzTeX format when prompt.
           On empty line hit ^D to see result, and hit ^D again to quit.
         '''.strip().replace('    ', '')
