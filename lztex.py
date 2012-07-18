@@ -220,6 +220,7 @@ def escape_latex(matched_char):
     else:
         d = { '^':  '^',
               '`':  '`',
+              "'":  'textquotesingle',
               '~':  'textasciitilde',
               '\\': 'textbackslash', }
         return '\\{char}{{}}'.format(char=d[c])
@@ -342,7 +343,7 @@ def t_BLOCKCODE(t):
 
 def t_CODE(t):
     r'(?P<star>`+).*?(?P=star)'
-    pattern = r'|'.join(escape(w) for w in r'\#$%&`_{}[]^~<>|')
+    pattern = r'|'.join(escape(w) for w in r"\#$%&`'_{}[]^~<>|")
     code = t.value.strip('`').strip()
     code = sub(pattern, escape_latex, code)
     t.value = r'\texttt{{{code}}}'.format(code=code)
@@ -932,7 +933,7 @@ class ParserFlag:
         prerequisite = ''
         prerequisite += r'\usepackage[T1]{fontenc}' + '\n'
         prerequisite += r'\usepackage{lmodern}' + '\n'
-        # prerequisite += r'\usepackage{upquote}' + '\n'
+        prerequisite += r'\usepackage{upquote}' + '\n'
 
         if self.amsmath:
             prerequisite += r'\usepackage{amsmath}' + '\n'
@@ -961,7 +962,7 @@ def main():
     global flag
     if not args.files:
         welcome_message = '''
-        LzTeX beta preview (nightly build: Thu, 19 Jul 2012 01:29:49 +0700)
+        LzTeX beta preview (nightly build: Thu, 19 Jul 2012 03:12:35 +0700)
           Quick Docs: Type a document in LzTeX format when prompt.
           On empty line hit ^D to see result, and hit ^D again to quit.
         '''.strip().replace('    ', '')
