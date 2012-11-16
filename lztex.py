@@ -238,6 +238,7 @@ tokens = (
         'IPA',
         'LINK',
         'ITEM',
+        'TITLELINE',
         'UNDERLINE',
         'NEWLINE',
         'ESCAPE',
@@ -373,6 +374,10 @@ def t_LINK(t):
         t.value = r'\href{{mailto:{name}}}{{\texttt{{<{name}>}}}}'.format(name=t.value[1:-1])
     else:
         t.value = r'\url{{{name}}}'.format(name=t.value[1:-1])
+    return t
+
+def t_TITLELINE(t):
+    r'\n\#+\n'
     return t
 
 def t_UNDERLINE(t):
@@ -585,14 +590,18 @@ lexer = lex.lex()
 ###############################################################################
 
 def p_document(t):
-    '''document : title section'''
+    '''document : section
+                | title section'''
     document = r'\documentclass{article}' + '\n'
 
     prerequisite = flag.make_prerequisite()
     if prerequisite != '':
         document = ''.join([document, prerequisite])
 
-    body = '\n'.join([t[1], r'\begin{document}', r'\maketitle', t[2], r'\end{document}'])
+    try:
+        body = '\n'.join([t[1], r'\begin{document}', r'\maketitle', t[2], r'\end{document}'])
+    except:
+        body = '\n'.join([r'\begin{document}', t[1], r'\end{document}'])
 
     t[0] = ''.join([document, body])
 
@@ -600,18 +609,22 @@ def p_document(t):
     return t[0]
 
 def p_title(t):
-    '''title : line UNDERLINE line'''
+    '''title : line TITLELINE line'''
     t[1] = r'\title{{{title}}}'.format(title=t[1])
     t[3] = r'\author{{{name}}}'.format(name=t[3])
-    t[0] = '\n'.join([t[1], t[3]])
+    t[0] = '\n'.join([t[1], t[3], r'\date{}'])
+
+def p_section_empty(t):
+    '''section : '''
+    t[0] = ''
 
 def p_section(t):
-    '''section :
+    '''section : block
                | section block'''
     try:
         t[0] = t[1] + t[2]
     except:
-        t[0] = ''
+        t[0] = t[1]
     
 def p_block(t):
     '''block : header

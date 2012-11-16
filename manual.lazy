@@ -1,5 +1,5 @@
 LzTeX Manual
-============
+############
 Nattawut Phetmak <neizod@gmail.com>
 
 
@@ -20,7 +20,7 @@ LaTeX document **must** start with article name, follow by the underline, and en
 
 ```
 LzTeX Manual
-============
+############
 Nattawut Phetmak
 ```
 
