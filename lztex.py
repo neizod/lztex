@@ -917,7 +917,7 @@ def p_error(t):
 
 
 import ply.yacc as yacc
-# yacc.yacc(debug=0)  # for release version.
+# yacc.yacc(write_tables=0, debug=0)  # for release version.
 yacc.yacc()
 
 
