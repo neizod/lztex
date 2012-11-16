@@ -10,5 +10,3 @@ Session.vim
 parser.out
 parsetab.py
 
-# migrate from flex/bison
-migrate_this
