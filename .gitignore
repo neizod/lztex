@@ -5,6 +5,7 @@ Session.vim
 
 # python
 *.py[cod]
+build/
 
 # ply
 parser.out

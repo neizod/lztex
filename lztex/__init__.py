@@ -970,6 +970,7 @@ def LzTeX():
     No <=, use =< instead (Haskell style).'''
 
 def main():
+    py2_handler()
     args = get_shell_args()
 
     global flag
@@ -1021,6 +1022,5 @@ def main():
             out_file.close()
 
 if __name__ == '__main__':
-    py2_handler()
     main()
 
