@@ -1,22 +1,5 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-
-import argparse
-
-def get_shell_args():
-    '''Get command line arguments for initialize program'''
-    # TODO write a user-friendly description
-
-    parser = argparse.ArgumentParser(description="(a desc to this prog)")
-    parser.add_argument('files', metavar='FILE', nargs='*',
-                        type=argparse.FileType('r'),
-                        help='(input file help desc)')
-    args = parser.parse_args()
-
-    return args
-
-
-###############################################################################
 
 from ply.lex import TOKEN
 from re import escape, sub
@@ -923,14 +906,6 @@ yacc.yacc()
 
 ###############################################################################
 
-def py2_handler():
-    # FIXME simple input handler for python2
-    try:
-        global input
-        input = raw_input
-    except:
-        pass
-
 class ParserFlag:
     def __init__(self):
         # package
@@ -963,64 +938,9 @@ class ParserFlag:
         return prerequisite
 
 
-# FIXME quick hack for build-in help.
-def LzTeX():
-    '''some help?
-    
-    No <=, use =< instead (Haskell style).'''
-
-def main():
-    py2_handler()
-    args = get_shell_args()
-
+def parse(s):
     global flag
-    if not args.files:
-        welcome_message = '''
-        LzTeX beta preview (nightly build: Thu, 19 Jul 2012 03:12:35 +0700)
-          Quick Docs: Type a document in LzTeX format when prompt.
-          On empty line hit ^D to see result, and hit ^D again to quit.
-        '''.strip().replace('    ', '')
-        print(welcome_message)
-        while True:
-            flag = ParserFlag()
-            try:
-                s = input('>>> ')
-
-                # FIXME quick hack for invoke intepreter help command.
-                if s == r'\h':
-                    help(LzTeX)
-                elif s == r'\q':
-                    raise EOFError
-                else:
-                    while True:
-                        try:
-                            s += '\n'
-                            s += input('... ')
-                        except (EOFError, KeyboardInterrupt):
-                            print('')
-                            lexer.begin_quote = True
-                            output = yacc.parse(s)
-                            print(output)
-                            break
-            except (EOFError, KeyboardInterrupt):
-                print('')
-                exit('bye ^^)/')
-    else:
-        import os
-        for in_file in args.files:
-            flag = ParserFlag()
-            lexer.begin_quote = True
-            output = yacc.parse(in_file.read())
-
-            file_name, file_ext = os.path.splitext(in_file.name)
-
-            # TODO check if .tex file already exists before overwrite it!
-            out_file = open(file_name + '.tex', 'w')
-            out_file.write(output)
-
-            in_file.close()
-            out_file.close()
-
-if __name__ == '__main__':
-    main()
+    flag = ParserFlag()
+    lexer.begin_quote = True
+    return yacc.parse(s)
 
